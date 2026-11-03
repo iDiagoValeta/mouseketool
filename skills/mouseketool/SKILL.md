@@ -1,6 +1,6 @@
 ---
 name: mouseketool
-description: Use FIRST, before writing any code, when the user wants a tool, app, service or library to exist that they have not built yet, whatever its size - a product idea, a wish ("I want something that...", "a way to...", "I'd like one command that..."), or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use when the user asks to change, fix or extend code that already exists in their project, or to perform one concrete action on their own files right now.
+description: Use FIRST, before you start writing a new tool, script, app, service or library for the user, and whenever the user wants one to exist that they have not built yet, whatever its size - a product idea, a wish ("I want something that...", "a way to...", "I'd like one command that..."), or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use when the user asks to change, fix or extend code that already exists in their project, or to perform one concrete action on their own files right now.
 ---
 
 # mouseketool
@@ -17,11 +17,11 @@ Split the idea into must-haves and nice-to-haves, and note the stated use (comme
 
 ## 3. Expand
 
-Write 8 to 15 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 15 rewordings of the user's sentence.
+Write 8 to 15 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 15 rewordings of the user's sentence. GitHub matches every word of a query, so keep each to 2 to 4 keywords; long queries return nothing. Add `stars:>50` to at least half of them, so mature projects are not buried under one-person experiments.
 
 ## 4. Search and shortlist
 
-Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful, with queries from a different angle. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Keep a handful.
+Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful or only tiny projects (under 50 stars), with queries from a different angle and `stars:>100`. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Keep a handful.
 
 ## 5. Inspect
 
@@ -29,7 +29,7 @@ Call `inspect_repository` on at most 6 candidates. Drop any with `health.archive
 
 ## 6. Judge
 
-For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), license fit, and the rough effort of adapting it versus building from scratch. Never recommend `reuse` or `adapt` for a candidate that misses a must-have.
+For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have.
 
 ## 7. Answer
 
