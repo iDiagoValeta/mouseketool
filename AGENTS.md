@@ -1,0 +1,43 @@
+# AGENTS.md
+
+mouseketool is a local MCP server that finds existing GitHub projects for a product idea.
+It ships with an Agent Skill that drives the server; the product has no LLM of its own and GitHub is its only source in v1.
+
+## Architecture
+
+Hexagonal (ports and adapters). Dependencies point inward:
+
+- `src/domain/**` and `src/application/**` import nothing from `src/infrastructure/**`, `@modelcontextprotocol/*`, `node:child_process`, `node:fs` or `node:fs/promises`.
+- ESLint `no-restricted-imports` enforces this in `pnpm lint`. `test/architecture/contract.test.ts` checks that the rule still fires on a known violation (`test/architecture/fixtures/`).
+- Adapters live in `src/infrastructure/**`. The composition root, `src/composition-root.ts`, is the only place that wires them to ports.
+
+## Commands
+
+- `pnpm install --frozen-lockfile`: install dependencies. Use pnpm only, never npm.
+- `pnpm typecheck`: `tsc --noEmit`.
+- `pnpm lint`: ESLint, including the layer rule.
+- `pnpm test`: Vitest.
+- `pnpm check`: typecheck, lint and test. Run it before pushing.
+- `pnpm build`: bundles `src/main.ts` into `dist/server.mjs`, the `mouseketool` bin.
+- `pnpm eval`: runs the eval harness in `evals/harness/cli.ts`.
+
+## Local files
+
+`.dev/` holds the design spec and the implementation plans. It is git-ignored and never versioned; this file cites it for context.
+
+## Git
+
+Trunk-based branching:
+
+- `main` is the only long-lived branch.
+- Work happens on short-lived branches cut from `main`, one per change.
+- PRs are squash-merged, and the branch is deleted on merge.
+- Every PR links an issue (`Closes #N`).
+- Commits and PR titles follow Conventional Commits (`feat:`, `fix:`, `chore:`, ...). Commit bodies explain why.
+- Everything in git is in English.
+
+A ruleset protecting `main` is documented here but not enforced yet: GitHub does not enforce rulesets on private repositories of a free personal account. When the repository goes public, enable it with: pull requests required, the `check` CI job required to pass, and no force pushes or deletions on `main`.
+
+## Releases
+
+release-please runs on `main`. It opens a release PR that bumps the version in `package.json` and updates `CHANGELOG.md`; merging that PR creates the tag and the GitHub release. The version is tracked in `.release-please-manifest.json`.

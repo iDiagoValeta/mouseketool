@@ -1,0 +1,21 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          # Node package: release-please bumps the version in package.json.
+          # The manifest file names the version per package, and the config file lists the packages.
+          release-type: node
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
