@@ -11,6 +11,19 @@ export class TokenMissingError extends Error {
   }
 }
 
+export class InvalidTokenError extends Error {
+  override name = 'InvalidTokenError';
+
+  // The message names where the value came from, never the value: it is a secret.
+  constructor(source: 'GITHUB_TOKEN' | 'gh auth token') {
+    super(`The GitHub token from ${source} contains characters a token cannot have; check it.`);
+  }
+}
+
+// A token is printable ASCII without spaces. Anything else, such as an embedded newline, would
+// make fetch reject the Authorization header with an error message that repeats the value.
+const VALID_TOKEN = /^[\x21-\x7e]+$/; // pragma: allowlist secret
+
 /** `GITHUB_TOKEN` wins; otherwise whatever `runGh` returns. A blank value counts as missing. */
 export async function resolveToken(
   env: NodeJS.ProcessEnv,
@@ -18,15 +31,22 @@ export async function resolveToken(
 ): Promise<string> {
   const fromEnv = env['GITHUB_TOKEN']?.trim();
   if (fromEnv) {
-    return fromEnv;
+    return validated(fromEnv, 'GITHUB_TOKEN');
   }
 
   const fromGh = (await runGh())?.trim();
   if (fromGh) {
-    return fromGh;
+    return validated(fromGh, 'gh auth token');
   }
 
   throw new TokenMissingError();
+}
+
+function validated(token: string, source: 'GITHUB_TOKEN' | 'gh auth token'): string {
+  if (!VALID_TOKEN.test(token)) {
+    throw new InvalidTokenError(source);
+  }
+  return token;
 }
 
 /** The token `gh` holds, or null when gh is absent, logged out or fails for any reason. */

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveToken, TokenMissingError } from '../../../src/infrastructure/github/token.ts';
+import {
+  InvalidTokenError,
+  resolveToken,
+  TokenMissingError,
+} from '../../../src/infrastructure/github/token.ts';
 
 const MESSAGE = 'mouseketool needs a GitHub token: set GITHUB_TOKEN or run "gh auth login".';
 
@@ -32,5 +36,49 @@ describe('resolveToken', () => {
 
   it('treats an empty gh output as missing', async () => {
     await expect(resolveToken({}, async () => '  \n')).rejects.toBeInstanceOf(TokenMissingError);
+  });
+
+  describe('a value that is not a plain token', () => {
+    const MULTILINE = 'first-line\nsecond-line';
+
+    it('rejects a GITHUB_TOKEN with an embedded newline, naming the source but not the value', async () => {
+      const error = await resolveToken({ GITHUB_TOKEN: MULTILINE }, async () => null).catch( // pragma: allowlist secret
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(InvalidTokenError);
+      expect((error as Error).message).toContain('GITHUB_TOKEN');
+      expect((error as Error).message).not.toContain('first-line');
+      expect((error as Error).message).not.toContain('second-line');
+    });
+
+    it('rejects a gh output with extra lines, naming gh but not the value', async () => {
+      const error = await resolveToken({}, async () => `${MULTILINE}\n`).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(InvalidTokenError);
+      expect((error as Error).message).toContain('gh auth token');
+      expect((error as Error).message).not.toContain('first-line');
+    });
+
+    it('rejects an embedded space or control character', async () => {
+      await expect(resolveToken({ GITHUB_TOKEN: 'a b' }, async () => null)).rejects.toBeInstanceOf( // pragma: allowlist secret
+        InvalidTokenError,
+      );
+      await expect(resolveToken({}, async () => 'a\u0007b')).rejects.toBeInstanceOf(
+        InvalidTokenError,
+      );
+    });
+
+    it('does not fall back to gh when the environment token is invalid', async () => {
+      let ghCalls = 0;
+
+      await expect(
+        resolveToken({ GITHUB_TOKEN: MULTILINE }, async () => { // pragma: allowlist secret
+          ghCalls += 1;
+          return 'from-gh';
+        }),
+      ).rejects.toBeInstanceOf(InvalidTokenError);
+      expect(ghCalls).toBe(0);
+    });
   });
 });

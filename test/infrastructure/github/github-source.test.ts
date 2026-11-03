@@ -109,6 +109,45 @@ describe('GitHubSource.search', () => {
   });
 });
 
+describe('a failing fetch', () => {
+  function sourceWhoseFetchRejects(error: Error): GitHubSource {
+    const clock = new FakeClock(NOW);
+    return new GitHubSource({
+      token: sentinel, // pragma: allowlist secret
+      fetch: (async () => {
+        throw error;
+      }) as typeof fetch,
+      searchLimiter: new RateLimiter(30, clock),
+      clock,
+    });
+  }
+
+  it('rethrows a sanitised GitHubError without the original message or cause', async () => {
+    const leaking = new Error(`Headers.append: "Bearer ${sentinel}" is an invalid header value.`, {
+      cause: new Error(sentinel),
+    });
+
+    const error = await sourceWhoseFetchRejects(leaking)
+      .readme('foo/bar')
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GitHubError);
+    expect((error as Error).message).toContain('/repos/foo/bar/readme');
+    expect((error as Error).message).not.toContain(sentinel);
+    expect((error as Error).cause).toBeUndefined();
+  });
+
+  it('keeps the search query out of the message of a failed search', async () => {
+    const error = await sourceWhoseFetchRejects(new TypeError('fetch failed'))
+      .search('my private idea', 5)
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GitHubError);
+    expect((error as Error).message).toContain('/search/repositories');
+    expect((error as Error).message).not.toContain('my private idea');
+  });
+});
+
 describe('GitHubSource.repository', () => {
   it('maps a repo, with the license from spdx_id', async () => {
     const { source, seen } = setup({ '/repos/foo/bar': { json: REPO_JSON } });

@@ -21,8 +21,13 @@ const BINARY_SNIFF_BYTES = 8_000;
 export class GitHubError extends Error {
   override name = 'GitHubError';
 
-  constructor(status: number, path: string) {
-    super(`GitHub request failed with HTTP ${status} for ${path}`);
+  /** `status` is null when no response came back at all. */
+  constructor(status: number | null, path: string) {
+    super(
+      status === null
+        ? `GitHub request failed before any response for ${path}`
+        : `GitHub request failed with HTTP ${status} for ${path}`,
+    );
   }
 }
 
@@ -189,14 +194,20 @@ export class GitHubSource implements RepositorySource {
     throw new GitHubError(response.status, path.split('?')[0]!);
   }
 
-  private send(path: string, raw: boolean): Promise<Response> {
-    return this.fetchFn(`${API}${path}`, {
-      headers: {
-        Accept: raw ? RAW_MEDIA : JSON_MEDIA,
-        Authorization: `Bearer ${this.token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
+  private async send(path: string, raw: boolean): Promise<Response> {
+    try {
+      return await this.fetchFn(`${API}${path}`, {
+        headers: {
+          Accept: raw ? RAW_MEDIA : JSON_MEDIA,
+          Authorization: `Bearer ${this.token}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+    } catch {
+      // Neither the original message nor its cause is kept: fetch can repeat a header value,
+      // and with it the token, in the text of its error.
+      throw new GitHubError(null, path.split('?')[0]!);
+    }
   }
 
   /** The time the limit lifts when this response is a rate-limit refusal, else null. */
