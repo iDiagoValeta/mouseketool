@@ -55,7 +55,7 @@ describe('scoreRun, negative', () => {
     expect(score('Verdict: adapt a/b').verdict).toBe(false);
   });
 
-  it('fails when there is no verdict line', () => {
+  it('is a miss when there is no verdict line, since that is not a build it recommendation', () => {
     expect(score('Sounds great, let us design it.').verdict).toBe(false);
   });
 });
@@ -66,6 +66,32 @@ describe('scoreRun, trigger', () => {
       scoreRun(run('trigger'), { finalText: 'done', logRepos: [], triggered });
     expect(score(false)).toEqual({ verdict: true });
     expect(score(true)).toEqual({ verdict: false });
+  });
+});
+
+describe('scoreRun, host run that errored', () => {
+  const error = 'claude run failed: error_max_turns';
+  const perfect = { finalText: 'Verdict: adapt foo/bar', logRepos: ['foo/bar'], triggered: true };
+
+  it('scores false on retrieval and verdict for a positive run, whatever the leftovers say', () => {
+    expect(scoreRun(run('positive-defined'), { ...perfect, error }, expected)).toEqual({
+      retrieval: false,
+      verdict: false,
+    });
+    expect(scoreRun(run('positive-vague'), { ...perfect, error }, expected)).toEqual({
+      retrieval: false,
+      verdict: false,
+    });
+  });
+
+  it('scores a negative false even if its text says build', () => {
+    const outcome = { finalText: 'Verdict: build', logRepos: [], triggered: true, error };
+    expect(scoreRun(run('negative'), outcome)).toEqual({ verdict: false });
+  });
+
+  it('scores a trigger false even though the empty log looks like "not triggered"', () => {
+    const outcome = { finalText: '', logRepos: [], triggered: false, error };
+    expect(scoreRun(run('trigger'), outcome)).toEqual({ verdict: false });
   });
 });
 

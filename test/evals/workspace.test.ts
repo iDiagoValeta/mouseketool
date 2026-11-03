@@ -1,10 +1,11 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Run } from '../../evals/harness/plan-runs.ts';
 import { createWorkspace, readRunLog, removeWorkspace } from '../../evals/harness/workspace.ts';
 
+const TOKEN = 'test-token-value';
 let base: string;
 beforeEach(() => {
   base = mkdtempSync(join(tmpdir(), 'mouseketool-workspace-test-'));
@@ -17,36 +18,46 @@ function run(host: Run['host']): Run {
 
 describe('createWorkspace', () => {
   it('lays out a Claude workspace with the skill and the MCP config', () => {
-    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), base);
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     expect(ws.dir).toBe(join(base, 'case-1-positive-vague'));
     expect(existsSync(join(ws.dir, '.claude/skills/mouseketool/SKILL.md'))).toBe(true);
     const config = JSON.parse(readFileSync(join(ws.dir, 'mcp.json'), 'utf8'));
     expect(config.mcpServers.mouseketool.args).toEqual([join(process.cwd(), 'dist/server.mjs')]);
-    expect(config.mcpServers.mouseketool.env.MOUSEKETOOL_RUN_LOG).toBe(ws.runLog);
+    expect(config.mcpServers.mouseketool.env).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
     expect(ws.runLog).toBe(join(ws.dir, 'run.jsonl'));
   });
 
   it('lays out an opencode workspace with the skill, an empty home and the MCP config', () => {
-    const ws = createWorkspace(run('opencode-deepseek-flash'), process.cwd(), base);
+    const ws = createWorkspace(run('opencode-deepseek-flash'), process.cwd(), TOKEN, base);
     expect(existsSync(join(ws.dir, '.opencode/skills/mouseketool/SKILL.md'))).toBe(true);
     expect(existsSync(join(ws.dir, 'home'))).toBe(true);
     const config = JSON.parse(readFileSync(join(ws.dir, 'opencode.json'), 'utf8'));
     expect(config.mcp.mouseketool.type).toBe('local');
     expect(config.mcp.mouseketool.command[1]).toBe(join(process.cwd(), 'dist/server.mjs'));
-    expect(config.mcp.mouseketool.environment.MOUSEKETOOL_RUN_LOG).toBe(ws.runLog);
+    expect(config.mcp.mouseketool.environment).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
   });
 
   it('replaces a workspace left behind by an earlier run', () => {
-    const first = createWorkspace(run('claude-haiku'), process.cwd(), base);
+    const first = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
     const stale = join(first.dir, 'stale.txt');
     writeFileSync(stale, 'left behind');
-    const second = createWorkspace(run('claude-haiku'), process.cwd(), base);
+    const second = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
     expect(existsSync(stale)).toBe(false);
     expect(second.dir).toBe(first.dir);
   });
 
+  it.each(['claude-haiku', 'opencode-deepseek-flash'] as const)(
+    'is readable only by its owner on %s, since the MCP config holds the token',
+    (host) => {
+      const ws = createWorkspace(run(host), process.cwd(), TOKEN, base);
+      const mode = (path: string) => statSync(path).mode & 0o777;
+      expect(mode(ws.dir)).toBe(0o700);
+      expect(mode(join(ws.dir, host === 'claude-haiku' ? 'mcp.json' : 'opencode.json'))).toBe(0o600);
+    },
+  );
+
   it('is removed by removeWorkspace', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), base);
+    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
     removeWorkspace(ws);
     expect(existsSync(ws.dir)).toBe(false);
   });
@@ -54,12 +65,18 @@ describe('createWorkspace', () => {
 
 describe('readRunLog', () => {
   it('has no calls when the server never ran', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), base);
+    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
     expect(readRunLog(ws)).toEqual({ triggered: false, logRepos: [] });
   });
 
+  it('skips a line that does not parse but still counts the run as triggered', () => {
+    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    writeFileSync(ws.runLog, '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_rep\n');
+    expect(readRunLog(ws)).toEqual({ triggered: true, logRepos: ['a/b'] });
+  });
+
   it('collects repos across calls, including a failed call without repos', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), base);
+    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
     writeFileSync(
       ws.runLog,
       [

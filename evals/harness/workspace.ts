@@ -11,15 +11,23 @@ export const WORKSPACE_ROOT = join(tmpdir(), 'mouseketool-eval');
 /**
  * A fresh directory holding the skill and the host's MCP config, and nothing else:
  * the host must find the mouseketool skill and the server, not the author's own setup.
+ * The token reaches the server only through its MCP config, never through the host's environment.
  * `node` is `process.execPath` so the server does not depend on the PATH the host hands to its children.
  */
-export function createWorkspace(run: Run, repoRoot: string, base: string = WORKSPACE_ROOT): Workspace {
+export function createWorkspace(
+  run: Run,
+  repoRoot: string,
+  githubToken: string,
+  base: string = WORKSPACE_ROOT,
+): Workspace {
   const dir = join(base, `${run.caseId}-${run.kind}`);
   rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
+  // The MCP config holds the GitHub token, so only the author may read the workspace.
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
 
   const runLog = join(dir, 'run.jsonl');
   const server = join(repoRoot, 'dist', 'server.mjs');
+  const serverEnv = { MOUSEKETOOL_RUN_LOG: runLog, GITHUB_TOKEN: githubToken }; // pragma: allowlist secret
   const skill = join(repoRoot, 'skills', 'mouseketool');
 
   if (run.host === 'opencode-deepseek-flash') {
@@ -32,19 +40,19 @@ export function createWorkspace(run: Run, repoRoot: string, base: string = WORKS
         mouseketool: {
           type: 'local',
           command: [process.execPath, server],
-          environment: { MOUSEKETOOL_RUN_LOG: runLog },
+          environment: serverEnv,
         },
       },
     };
-    writeFileSync(join(dir, 'opencode.json'), JSON.stringify(config, null, 2));
+    writeFileSync(join(dir, 'opencode.json'), JSON.stringify(config, null, 2), { mode: 0o600 });
   } else {
     cpSync(skill, join(dir, '.claude', 'skills', 'mouseketool'), { recursive: true });
     const config = {
       mcpServers: {
-        mouseketool: { command: process.execPath, args: [server], env: { MOUSEKETOOL_RUN_LOG: runLog } },
+        mouseketool: { command: process.execPath, args: [server], env: serverEnv },
       },
     };
-    writeFileSync(join(dir, 'mcp.json'), JSON.stringify(config, null, 2));
+    writeFileSync(join(dir, 'mcp.json'), JSON.stringify(config, null, 2), { mode: 0o600 });
   }
 
   return { dir, runLog };
@@ -54,10 +62,20 @@ export function removeWorkspace(workspace: Workspace): void {
   rmSync(workspace.dir, { recursive: true, force: true });
 }
 
-/** `triggered` is true when the server logged at least one call, failed calls included. */
+/**
+ * `triggered` is true when the server logged at least one line, failed calls included.
+ * A line that does not parse still shows the server ran, so it counts as a call without repos.
+ */
 export function readRunLog(workspace: Workspace): { triggered: boolean; logRepos: RepoName[] } {
   if (!existsSync(workspace.runLog)) return { triggered: false, logRepos: [] };
   const lines = readFileSync(workspace.runLog, 'utf8').split('\n').filter((line) => line.trim() !== '');
-  const repos = lines.flatMap((line) => (JSON.parse(line) as { repos: RepoName[] }).repos);
+  const repos = lines.flatMap((line): RepoName[] => {
+    try {
+      const entry = JSON.parse(line) as { repos?: unknown };
+      return Array.isArray(entry.repos) ? entry.repos.filter((r): r is RepoName => typeof r === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
   return { triggered: lines.length > 0, logRepos: [...new Set(repos)] };
 }

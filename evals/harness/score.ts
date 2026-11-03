@@ -2,7 +2,8 @@ import type { RepoName } from '../../src/domain/repo-name.ts';
 import { HOSTS, type Host, type Run } from './plan-runs.ts';
 import { parseVerdict } from './verdict.ts';
 
-export type Outcome = { finalText: string; logRepos: RepoName[]; triggered: boolean };
+/** `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass. */
+export type Outcome = { finalText: string; logRepos: RepoName[]; triggered: boolean; error?: string };
 export type Score = { retrieval?: boolean; verdict: boolean };
 
 /**
@@ -11,6 +12,10 @@ export type Score = { retrieval?: boolean; verdict: boolean };
  */
 export function scoreRun(run: Run, outcome: Outcome, expected?: RepoName[]): Score {
   const verdict = parseVerdict(outcome.finalText);
+
+  if (outcome.error !== undefined) {
+    return run.kind.startsWith('positive') ? { retrieval: false, verdict: false } : { verdict: false };
+  }
 
   if (run.kind === 'trigger') {
     return { verdict: !outcome.triggered };

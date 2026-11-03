@@ -1,5 +1,6 @@
+import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { execCapture, type Exec, type Runner } from './runner.ts';
+import { baseEnv, execCapture, type Exec, type Runner } from './runner.ts';
 
 const ALLOWED_TOOLS = [
   'mcp__mouseketool__search_repositories',
@@ -25,6 +26,7 @@ export class ClaudeRunner implements Runner {
   constructor(
     private readonly model: string,
     private readonly exec: Exec = execCapture,
+    private readonly env: NodeJS.ProcessEnv = process.env,
   ) {}
 
   async run(prompt: string, workspace: string): Promise<{ finalText: string }> {
@@ -40,7 +42,9 @@ export class ClaudeRunner implements Runner {
       '--mcp-config', join(workspace, 'mcp.json'),
       '--allowedTools', ALLOWED_TOOLS,
     ];
-    const { stdout, stderr } = await this.exec('claude', args, { cwd: workspace, env: process.env });
+    // The real HOME is the one extra variable: Claude's OAuth login lives there.
+    const env = { ...baseEnv(this.env), HOME: this.env['HOME'] ?? homedir() };
+    const { stdout, stderr } = await this.exec('claude', args, { cwd: workspace, env });
     try {
       return { finalText: parseClaudeOutput(stdout) };
     } catch (error) {
