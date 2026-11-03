@@ -10,7 +10,7 @@
   },
   {
     "id": "pos-clean-build-artifacts",
-    "vague": "A way to reclaim disk space by wiping the dependency folders and build output from all my old code projects in one go.",
+    "vague": "A way to reclaim disk space by wiping the dependency folders and build output from all my old projects, whatever language each one uses, in one go.",
     "defined": "Must have:\n- Scans a directory tree and finds software projects in it\n- Recognises several ecosystems (Node, Rust, Python, Java and others), not just one\n- Removes only regenerable artifacts such as dependencies and build output, never source code\n- Asks for confirmation before deleting anything\nNice to have:\n- Shows how much space each project would free\n- Has a graphical interface besides the command line",
     "expected": [
       "tbillington/kondo"
@@ -67,7 +67,7 @@
   },
   {
     "id": "pos-invoice-data-extraction",
-    "vague": "Our accounting inbox fills with supplier PDFs and I want the amounts, dates and invoice numbers pulled out automatically.",
+    "vague": "Our accounting inbox fills with supplier bills as attachments and I want the amounts, dates and reference numbers pulled out automatically.",
     "defined": "Must have:\n- Extracts structured data (such as date, amount and invoice number) from invoice PDFs\n- Handles different invoice layouts through templates written by the user\n- Usable both as a command line tool and as a library\n- Works without a paid cloud service\nNice to have:\n- OCR fallback for scanned invoices\n- Output as JSON, CSV or XML",
     "expected": [
       "invoice-x/invoice2data"
@@ -98,11 +98,11 @@
     ]
   },
   {
-    "id": "pos-photo-library-duplicates",
-    "vague": "My self-hosted photo library is full of near-identical shots and I'd like a tool that finds them by how they look and helps me clear them out.",
-    "defined": "Must have:\n- Finds duplicate and similar photos in an existing self-hosted photo library\n- Matches by visual similarity, not only by identical file hashes\n- Lets the user review groups of duplicates before deleting anything\n- Deleted photos can be recovered\nNice to have:\n- Suggests which photo of a group to keep automatically\n- Adjustable similarity threshold",
+    "id": "pos-ios-dependency-notices",
+    "vague": "I want the legal notices of every third-party package my iPhone app uses to show up automatically in the system Settings screen for the app.",
+    "defined": "Must have:\n- Command line tool, not an in-app screen library\n- Collects the notices of all dependencies listed by CocoaPods or Carthage\n- Generates the files to put in the app's Settings.bundle\n- Lets dependencies that were added by hand be included through a configuration file\nNice to have:\n- Installable with Homebrew or Mint\n- Separate list and detail screens in the output",
     "expected": [
-      "razgrizhsu/immich-deduper"
+      "mono0926/licenseplist"
     ]
   },
   {

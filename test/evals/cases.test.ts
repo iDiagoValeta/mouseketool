@@ -56,6 +56,19 @@ describe('positive cases', () => {
   );
 
   it.each(cases.positive.map((c) => [c.id, c] as const))(
+    '%s vague text has no long word from the repo owner or name',
+    (_id, c) => {
+      const text = c.vague.toLowerCase();
+      for (const repo of c.expected) {
+        const words = repo.split(/[-_/]/).filter((word) => word.length >= 5);
+        for (const word of words) {
+          expect(text).not.toContain(word);
+        }
+      }
+    },
+  );
+
+  it.each(cases.positive.map((c) => [c.id, c] as const))(
     '%s defined text has 4 to 8 requirements in both lists',
     (_id, c) => {
       const must = requirements(c.defined, 'Must have:');
