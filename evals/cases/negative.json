@@ -12,8 +12,8 @@
     "defined": "Must have:\n- Records the user practising an instrument through the microphone\n- Detects the tempo actually played, not the metronome setting\n- Stores one entry per piece and per session\n- Charts the tempo progress of each piece over weeks\nNice to have:\n- Warns when the player speeds up during a passage\n- Exports the log as CSV"
   },
   {
-    "id": "neg-shopping-list-route",
-    "defined": "Must have:\n- Self-hosted shared shopping list used from a phone\n- Learns the order of aisles of each store from the order in which items are checked off\n- Sorts the list by the learned walking route of the chosen store\n- Several people can edit the same list\nNice to have:\n- Remembers items that are bought often\n- Works offline in the shop"
+    "id": "neg-choir-practice-tracker",
+    "defined": "Must have:\n- Self-hosted web application for an amateur choir\n- Imports a score as MusicXML and generates one practice audio file per voice part, with that part louder than the others\n- Each member has an account and is assigned a voice part\n- Logs which pieces each member practised and for how long\n- Shows the choir director, per piece, which members have not practised yet\nNice to have:\n- Adjustable tempo for the practice audio\n- Reminder emails before rehearsals"
   },
   {
     "id": "neg-sub-meter-bill-split",
