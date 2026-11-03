@@ -13,6 +13,8 @@ const JSON_MEDIA = 'application/vnd.github+json';
 const RAW_MEDIA = 'application/vnd.github.raw';
 // GitHub's own advice for a limit it gives no reset time for is to wait at least a minute.
 const DEFAULT_LIMIT_WAIT_MS = 60_000;
+// A tool call that blocks for longer than this looks hung to the caller; fail with the reset time.
+const MAX_LIMIT_WAIT_MS = 60_000;
 const PAGE = 100;
 const BINARY_SNIFF_BYTES = 8_000;
 
@@ -168,7 +170,11 @@ export class GitHubSource implements RepositorySource {
     let limit = this.rateLimit(response);
 
     if (limit !== null) {
-      await this.clock.sleep(Math.max(0, limit.resetAt.getTime() - this.clock.now()));
+      const waitMs = Math.max(0, limit.resetAt.getTime() - this.clock.now());
+      if (waitMs > MAX_LIMIT_WAIT_MS) {
+        throw new RateLimitedError(limit.resetAt);
+      }
+      await this.clock.sleep(waitMs);
       response = await this.send(path, opts.raw === true);
       limit = this.rateLimit(response);
       if (limit !== null) {

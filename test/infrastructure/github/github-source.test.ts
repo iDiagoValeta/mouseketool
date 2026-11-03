@@ -323,7 +323,7 @@ describe('GitHubSource.activity', () => {
 });
 
 describe('rate limiting', () => {
-  const RESET_S = NOW / 1000 + 120; // two minutes after the fake clock's now
+  const RESET_S = NOW / 1000 + 30; // half a minute after the fake clock's now
 
   function limited(extra: Record<string, string> = {}): Reply {
     return {
@@ -341,7 +341,48 @@ describe('rate limiting', () => {
 
     expect(await source.readme('foo/bar')).toBe('# Bar');
     expect(calls).toBe(2);
-    expect(clock.sleeps).toEqual([120_000]);
+    expect(clock.sleeps).toEqual([30_000]);
+  });
+
+  it('still waits and retries when the reset is exactly 60 s away', async () => {
+    let calls = 0;
+    const { source, clock } = setup({
+      '/repos/foo/bar/readme': () =>
+        ++calls === 1
+          ? limited({ 'x-ratelimit-reset': String(NOW / 1000 + 60) })
+          : { body: '# Bar' },
+    });
+
+    expect(await source.readme('foo/bar')).toBe('# Bar');
+    expect(clock.sleeps).toEqual([60_000]);
+  });
+
+  it('throws RateLimitedError at once, without sleeping, when the reset is 61 s away', async () => {
+    let calls = 0;
+    const resetAt = NOW / 1000 + 61;
+    const { source, clock } = setup({
+      '/repos/foo/bar/readme': () => {
+        calls += 1;
+        return limited({ 'x-ratelimit-reset': String(resetAt) });
+      },
+    });
+
+    const error = await source.readme('foo/bar').catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RateLimitedError);
+    expect((error as RateLimitedError).resetAt).toEqual(new Date(resetAt * 1000));
+    expect((error as Error).message).toContain(new Date(resetAt * 1000).toISOString());
+    expect(calls).toBe(1);
+    expect(clock.sleeps).toEqual([]);
+  });
+
+  it('applies the same cap to retry-after', async () => {
+    const { source, clock } = setup({
+      '/repos/foo/bar/readme': limited({ 'retry-after': '61' }),
+    });
+
+    await expect(source.readme('foo/bar')).rejects.toBeInstanceOf(RateLimitedError);
+    expect(clock.sleeps).toEqual([]);
   });
 
   it('prefers retry-after (seconds) when present, also on 429', async () => {
