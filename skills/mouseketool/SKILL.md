@@ -1,6 +1,6 @@
 ---
 name: mouseketool
-description: Use when the user describes a new product, app, tool or service idea, or a large new component, before any design or code is written. Searches GitHub for existing projects that fit, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for small tasks such as scripts, flags, refactors, bug fixes or edits to an existing codebase.
+description: Use FIRST, before writing any code, when the user wants a tool, app, service or library to exist that they have not built yet, whatever its size - a product idea, a wish ("I want something that...", "a way to...", "I'd like one command that..."), or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use when the user asks to change, fix or extend code that already exists in their project, or to perform one concrete action on their own files right now.
 ---
 
 # mouseketool
@@ -9,7 +9,7 @@ Before building something new, find out whether it already exists. The tools `se
 
 ## 1. Gate
 
-If the request is not a new product or a large new component, stop silently: no mention of this skill, no questions, no search. When in doubt, do not trigger: noise on a small task is the failure to avoid.
+Run the method when the user wants a reusable tool, app or service to exist, even a small one and even when phrased as a wish: that is exactly when people build what already exists. Do it before writing any file. Stop silently (no mention of this skill, no questions, no search) when the request changes, fixes or extends code already in their project, or asks for one concrete action on their own files right now. When in doubt between those two, do not trigger: noise on a small task is the failure to avoid.
 
 ## 2. Read the input
 
