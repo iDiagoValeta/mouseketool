@@ -20,7 +20,23 @@ export async function searchCandidates(
   deps: { source: RepositorySource; log: RunLog },
   input: { queries: string[] },
 ): Promise<SearchResult> {
-  const { queries } = input;
+  let result: SearchResult;
+  try {
+    result = await search(deps.source, input.queries);
+  } catch (error) {
+    // A rejected call still counts as the tool being triggered.
+    await deps.log.record({ tool: 'search_repositories', repos: [] });
+    throw error;
+  }
+
+  await deps.log.record({
+    tool: 'search_repositories',
+    repos: result.candidates.map((c) => c.name),
+  });
+  return result;
+}
+
+async function search(source: RepositorySource, queries: string[]): Promise<SearchResult> {
   if (queries.length === 0) {
     throw new TooManyQueriesError('At least 1 query is required');
   }
@@ -30,7 +46,7 @@ export async function searchCandidates(
 
   // One failing query must not hide the results of the others.
   const settled = await Promise.allSettled(
-    queries.map((query) => deps.source.search(query, RESULTS_PER_QUERY)),
+    queries.map((query) => source.search(query, RESULTS_PER_QUERY)),
   );
 
   const found: Candidate[][] = [];
@@ -47,8 +63,5 @@ export async function searchCandidates(
     }
   });
 
-  const candidates = mergeResults(found, RESULT_LIMIT);
-  await deps.log.record({ tool: 'search_repositories', repos: candidates.map((c) => c.name) });
-
-  return { candidates, errors };
+  return { candidates: mergeResults(found, RESULT_LIMIT), errors };
 }

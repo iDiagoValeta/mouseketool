@@ -79,7 +79,7 @@ describe('searchCandidates', () => {
     expect(result.candidates).toHaveLength(40);
   });
 
-  it('rejects more than 15 queries without calling the source or the log', async () => {
+  it('rejects more than 15 queries without calling the source, logging one empty entry', async () => {
     const source = new InMemorySource();
     const log = new MemoryRunLog();
     const queries = Array.from({ length: 16 }, (_, i) => `q${i}`);
@@ -89,7 +89,7 @@ describe('searchCandidates', () => {
     await expect(call).rejects.toThrow(TooManyQueriesError);
     await expect(call).rejects.toThrow('At most 15 queries per call, got 16');
     expect(source.searchCalls).toEqual([]);
-    expect(log.entries).toEqual([]);
+    expect(log.entries).toEqual([{ tool: 'search_repositories', repos: [] }]);
   });
 
   it('accepts exactly 15 queries', async () => {
@@ -108,6 +108,14 @@ describe('searchCandidates', () => {
 
     await expect(call).rejects.toThrow(TooManyQueriesError);
     await expect(call).rejects.toThrow('At least 1 query is required');
+  });
+
+  it('logs one empty entry for an empty query list', async () => {
+    const log = new MemoryRunLog();
+
+    await searchCandidates({ source: new InMemorySource(), log }, { queries: [] }).catch(() => {});
+
+    expect(log.entries).toEqual([{ tool: 'search_repositories', repos: [] }]);
   });
 
   it('logs every returned repo in one entry', async () => {

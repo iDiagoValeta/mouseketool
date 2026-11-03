@@ -103,4 +103,22 @@ describe('inspectRepository', () => {
 
     expect(log.entries).toEqual([{ tool: 'inspect_repository', repos: ['foo/bar'] }]);
   });
+
+  it('logs one empty entry and rethrows when the repo name is invalid', async () => {
+    const { deps, log } = setup();
+
+    await expect(inspectRepository(deps, { repo: 'not a repo' })).rejects.toThrow(
+      InvalidRepoNameError,
+    );
+    expect(log.entries).toEqual([{ tool: 'inspect_repository', repos: [] }]);
+  });
+
+  it('logs one empty entry and rethrows the source error when the repo is unknown', async () => {
+    const { deps, log } = setup();
+
+    await expect(inspectRepository(deps, { repo: 'other/repo' })).rejects.toThrow(
+      'Repository not found: other/repo',
+    );
+    expect(log.entries).toEqual([{ tool: 'inspect_repository', repos: [] }]);
+  });
 });

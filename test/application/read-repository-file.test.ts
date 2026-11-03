@@ -81,4 +81,22 @@ describe('readRepositoryFile', () => {
       InvalidRepoNameError,
     );
   });
+
+  it('logs one empty entry and rethrows when the repo name is invalid', async () => {
+    const { deps, log } = setup({});
+
+    await expect(readRepositoryFile(deps, { repo: 'nope', path: 'x' })).rejects.toThrow(
+      InvalidRepoNameError,
+    );
+    expect(log.entries).toEqual([{ tool: 'read_repository_file', repos: [] }]);
+  });
+
+  it('logs one empty entry and rethrows the source error when the repo is unknown', async () => {
+    const { deps, log } = setup({});
+
+    await expect(readRepositoryFile(deps, { repo: 'other/repo', path: 'x' })).rejects.toThrow(
+      'Repository not found: other/repo',
+    );
+    expect(log.entries).toEqual([{ tool: 'read_repository_file', repos: [] }]);
+  });
 });

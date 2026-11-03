@@ -1,5 +1,6 @@
 import { parseRepoName } from '../domain/repo-name.ts';
-import type { RepositorySource } from './ports/repository-source.ts';
+import type { RepoName } from '../domain/repo-name.ts';
+import type { FileContent, RepositorySource } from './ports/repository-source.ts';
 import type { RunLog } from './ports/run-log.ts';
 
 const FILE_LIMIT = 20_000;
@@ -10,8 +11,16 @@ export async function readRepositoryFile(
   deps: { source: RepositorySource; log: RunLog },
   input: { repo: string; path: string },
 ): Promise<ReadFileResult> {
-  const name = parseRepoName(input.repo);
-  const content = await deps.source.file(name, input.path);
+  let name: RepoName;
+  let content: FileContent;
+  try {
+    name = parseRepoName(input.repo);
+    content = await deps.source.file(name, input.path);
+  } catch (error) {
+    // A rejected call still counts as the tool being triggered.
+    await deps.log.record({ tool: 'read_repository_file', repos: [] });
+    throw error;
+  }
 
   await deps.log.record({ tool: 'read_repository_file', repos: [name] });
 
