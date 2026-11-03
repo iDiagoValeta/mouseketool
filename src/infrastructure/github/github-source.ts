@@ -1,0 +1,245 @@
+import type {
+  FileContent,
+  RepositorySource,
+} from '../../application/ports/repository-source.ts';
+import type { Candidate } from '../../domain/candidate.ts';
+import type { ActivityFacts } from '../../domain/health.ts';
+import { parseRepoName } from '../../domain/repo-name.ts';
+import type { RepoName } from '../../domain/repo-name.ts';
+import type { Clock, RateLimiter } from './rate-limiter.ts';
+
+const API = 'https://api.github.com';
+const JSON_MEDIA = 'application/vnd.github+json';
+const RAW_MEDIA = 'application/vnd.github.raw';
+// GitHub's own advice for a limit it gives no reset time for is to wait at least a minute.
+const DEFAULT_LIMIT_WAIT_MS = 60_000;
+const PAGE = 100;
+const BINARY_SNIFF_BYTES = 8_000;
+
+export class GitHubError extends Error {
+  override name = 'GitHubError';
+
+  constructor(status: number, path: string) {
+    super(`GitHub request failed with HTTP ${status} for ${path}`);
+  }
+}
+
+export class RateLimitedError extends Error {
+  override name = 'RateLimitedError';
+
+  constructor(readonly resetAt: Date) {
+    super(`GitHub rate limit reached; it resets at ${resetAt.toISOString()}`);
+  }
+}
+
+interface RepoJson {
+  full_name: string;
+  html_url: string;
+  description?: string | null;
+  stargazers_count: number;
+  pushed_at?: string | null;
+  created_at: string;
+  license?: { spdx_id?: string | null } | null;
+  topics?: string[];
+  archived: boolean;
+  language?: string | null;
+  open_issues_count?: number;
+}
+
+export class GitHubSource implements RepositorySource {
+  private readonly token: string;
+  private readonly fetchFn: typeof fetch;
+  private readonly searchLimiter: RateLimiter;
+  private readonly clock: Clock;
+
+  constructor(opts: {
+    token: string;
+    fetch: typeof fetch;
+    searchLimiter: RateLimiter;
+    clock: Clock;
+  }) {
+    this.token = opts.token;
+    this.fetchFn = opts.fetch;
+    this.searchLimiter = opts.searchLimiter;
+    this.clock = opts.clock;
+  }
+
+  async search(query: string, perQuery: number): Promise<Candidate[]> {
+    await this.searchLimiter.acquire();
+    const params = new URLSearchParams({ q: query, per_page: String(perQuery) });
+    const response = await this.request(`/search/repositories?${params}`);
+    const body = (await response.json()) as { items: RepoJson[] };
+
+    // One malformed name must not cost the whole query its results.
+    return body.items.flatMap((item) => {
+      try {
+        return [toCandidate(item)];
+      } catch {
+        return [];
+      }
+    });
+  }
+
+  async repository(name: RepoName): Promise<Candidate> {
+    return toCandidate(await this.repoJson(name));
+  }
+
+  async readme(name: RepoName): Promise<string | null> {
+    const response = await this.request(`/repos/${name}/readme`, { raw: true, allow: [404] });
+    return response.status === 404 ? null : response.text();
+  }
+
+  async topLevelTree(name: RepoName): Promise<string[]> {
+    // An empty repository answers 404 here.
+    const response = await this.request(`/repos/${name}/contents/`, { allow: [404] });
+    if (response.status === 404) {
+      return [];
+    }
+    const entries = (await response.json()) as { name: string; type: string }[];
+    return entries.map((entry) => (entry.type === 'dir' ? `${entry.name}/` : entry.name));
+  }
+
+  async file(name: RepoName, path: string): Promise<FileContent> {
+    const segments = path.split('/').filter((segment) => segment !== '');
+    // fetch collapses `..` in a URL, which would turn this into a request to another endpoint.
+    if (segments.some((segment) => segment === '.' || segment === '..')) {
+      return { kind: 'missing' };
+    }
+
+    const encoded = segments.map(encodeURIComponent).join('/');
+    const response = await this.request(`/repos/${name}/contents/${encoded}`, {
+      raw: true,
+      allow: [404],
+    });
+    if (response.status === 404) {
+      return { kind: 'missing' };
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.subarray(0, BINARY_SNIFF_BYTES).includes(0)) {
+      return { kind: 'binary' };
+    }
+    return { kind: 'text', text: new TextDecoder().decode(bytes) };
+  }
+
+  async activity(name: RepoName, since: Date): Promise<ActivityFacts> {
+    const sinceIso = since.toISOString();
+    const [repo, commits, issues, contributors, release] = await Promise.all([
+      this.repoJson(name),
+      this.request(`/repos/${name}/commits?since=${sinceIso}&per_page=${PAGE}`, { allow: [409] }),
+      this.request(`/repos/${name}/issues?state=closed&since=${sinceIso}&per_page=${PAGE}`),
+      this.request(`/repos/${name}/contributors?per_page=${PAGE}`),
+      this.request(`/repos/${name}/releases/latest`, { allow: [404] }),
+    ]);
+
+    // `since` on the issues endpoint filters by last update, so closure is checked here.
+    const closed = ((await issues.json()) as { closed_at: string | null; pull_request?: unknown }[])
+      .filter(
+        (issue) =>
+          issue.pull_request === undefined &&
+          issue.closed_at !== null &&
+          Date.parse(issue.closed_at) >= since.getTime(),
+      ).length;
+
+    return {
+      // A 409 is an empty repository, and a 204 on contributors has no body.
+      commitsLast90Days: commits.status === 409 ? 0 : await countItems(commits),
+      issuesClosedLast90Days: closed,
+      openIssues: repo.open_issues_count ?? 0,
+      contributors: contributors.status === 204 ? 0 : await countItems(contributors),
+      latestRelease: release.status === 404 ? null : await toRelease(release),
+    };
+  }
+
+  private async repoJson(name: RepoName): Promise<RepoJson> {
+    const response = await this.request(`/repos/${name}`);
+    return (await response.json()) as RepoJson;
+  }
+
+  /**
+   * Sends one request and returns the response when it is 2xx or one of the statuses the
+   * caller handles itself. A rate-limited reply waits for the reset and is retried once.
+   */
+  private async request(
+    path: string,
+    opts: { raw?: boolean; allow?: number[] } = {},
+  ): Promise<Response> {
+    let response = await this.send(path, opts.raw === true);
+    let limit = this.rateLimit(response);
+
+    if (limit !== null) {
+      await this.clock.sleep(Math.max(0, limit.resetAt.getTime() - this.clock.now()));
+      response = await this.send(path, opts.raw === true);
+      limit = this.rateLimit(response);
+      if (limit !== null) {
+        throw new RateLimitedError(limit.resetAt);
+      }
+    }
+
+    if (response.ok || opts.allow?.includes(response.status) === true) {
+      return response;
+    }
+    // The path only, never the headers: they carry the token.
+    throw new GitHubError(response.status, path.split('?')[0]!);
+  }
+
+  private send(path: string, raw: boolean): Promise<Response> {
+    return this.fetchFn(`${API}${path}`, {
+      headers: {
+        Accept: raw ? RAW_MEDIA : JSON_MEDIA,
+        Authorization: `Bearer ${this.token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+  }
+
+  /** The time the limit lifts when this response is a rate-limit refusal, else null. */
+  private rateLimit(response: Response): { resetAt: Date } | null {
+    if (response.status !== 403 && response.status !== 429) {
+      return null;
+    }
+
+    const retryAfter = response.headers.get('retry-after');
+    const exhausted = response.headers.get('x-ratelimit-remaining') === '0';
+    if (retryAfter === null && !exhausted) {
+      return null;
+    }
+
+    const reset = response.headers.get('x-ratelimit-reset');
+    if (retryAfter !== null) {
+      return { resetAt: new Date(this.clock.now() + Number(retryAfter) * 1000) };
+    }
+    if (reset !== null) {
+      return { resetAt: new Date(Number(reset) * 1000) };
+    }
+    return { resetAt: new Date(this.clock.now() + DEFAULT_LIMIT_WAIT_MS) };
+  }
+}
+
+function toCandidate(raw: RepoJson): Candidate {
+  return {
+    name: parseRepoName(raw.full_name),
+    url: raw.html_url,
+    description: raw.description ?? null,
+    stars: raw.stargazers_count,
+    // The domain computes months from this, so it must always be a date. Empty repos have no push.
+    pushedAt: raw.pushed_at ?? raw.created_at,
+    license: raw.license?.spdx_id ?? null,
+    topics: raw.topics ?? [],
+    archived: raw.archived,
+    language: raw.language ?? null,
+  };
+}
+
+async function countItems(response: Response): Promise<number> {
+  return ((await response.json()) as unknown[]).length;
+}
+
+async function toRelease(response: Response): Promise<ActivityFacts['latestRelease']> {
+  const body = (await response.json()) as {
+    tag_name: string;
+    published_at?: string | null;
+    created_at?: string;
+  };
+  return { tag: body.tag_name, publishedAt: body.published_at ?? body.created_at ?? '' };
+}
