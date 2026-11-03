@@ -9,11 +9,11 @@ Before building something new, find out whether it already exists. The tools `se
 
 ## 1. Gate
 
-If the request is not a new product or a large new component, stop silently: no mention of this skill, no questions, no search.
+If the request is not a new product or a large new component, stop silently: no mention of this skill, no questions, no search. When in doubt, do not trigger: noise on a small task is the failure to avoid.
 
 ## 2. Read the input
 
-Split the idea into must-haves and nice-to-haves, and note the stated use (commercial, internal, open source) and stack constraints. Ask at most two questions, and only if the answer would change the verdict; otherwise state your assumption in one line and go on.
+Split the idea into must-haves and nice-to-haves, and note the stated use (commercial, internal, open source) and stack constraints. Ask at most two questions, and only if the answer would change the verdict; otherwise state your assumption in one line and go on. Calibrate depth to the input: a vague one-liner gets a wide map of what exists in that space; a defined requirements document gets a requirement-by-requirement analysis.
 
 ## 3. Expand
 
@@ -25,7 +25,7 @@ Call `search_repositories` once with all queries. Call it a second time only if 
 
 ## 5. Inspect
 
-Call `inspect_repository` on at most 6 candidates. Drop any with `health.archived`, `health.stale`, or a `health.licenseKind` that blocks the user's stated use (`none` blocks everything; `copyleft` blocks closed-source use). For every capability the verdict depends on, confirm it in the code with `read_repository_file`. A README claim alone is not confirmation.
+Call `inspect_repository` on at most 6 candidates. Drop any with `health.archived` or `health.stale`, or whose license blocks the user's stated use. `licenseKind` `none` blocks all use. `copyleft` blocks closed-source use only when the license really does: LGPL and MPL do not block all of it, so drop only after checking what the specific license requires. For `other`, read the license (the `LICENSE` file via `read_repository_file`) and decide. For every capability the verdict depends on, confirm it in the code with `read_repository_file`. A README claim alone is not confirmation.
 
 ## 6. Judge
 
