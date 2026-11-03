@@ -1,0 +1,164 @@
+[
+  {
+    "id": "pos-env-file-checks",
+    "vague": "I want something that catches duplicated keys and formatting slips in my environment variable files before they break a deploy.",
+    "defined": "Must have:\n- Command line tool that checks environment variable files for problems\n- Detects duplicated keys\n- Detects style problems such as spaces around the equals sign or lowercase key names\n- Exits with a non-zero status when it finds problems, so CI can fail on it\nNice to have:\n- Can fix the problems it finds automatically\n- Ready-made pre-commit or GitHub Actions integration",
+    "expected": [
+      "dotenv-linter/dotenv-linter",
+      "wemake-services/dotenv-linter"
+    ]
+  },
+  {
+    "id": "pos-clean-build-artifacts",
+    "vague": "A way to reclaim disk space by wiping the dependency folders and build output from all my old code projects in one go.",
+    "defined": "Must have:\n- Scans a directory tree and finds software projects in it\n- Recognises several ecosystems (Node, Rust, Python, Java and others), not just one\n- Removes only regenerable artifacts such as dependencies and build output, never source code\n- Asks for confirmation before deleting anything\nNice to have:\n- Shows how much space each project would free\n- Has a graphical interface besides the command line",
+    "expected": [
+      "tbillington/kondo"
+    ]
+  },
+  {
+    "id": "pos-gmail-filters-as-code",
+    "vague": "My mail inbox rules have become an unmaintainable mess and I would like to keep them in a file I can review, like code.",
+    "defined": "Must have:\n- Gmail filters are described in a declarative configuration file\n- Shows a diff of the changes before they are applied\n- Applies the filters to the Gmail account through its API, with no manual import step\n- Reduces long filter queries so they stay under Gmail's size limit\nNice to have:\n- Imports the filters already in the account into the configuration file\n- Lets filters be composed from reusable pieces",
+    "expected": [
+      "mbrt/gmailctl"
+    ]
+  },
+  {
+    "id": "pos-many-git-repos",
+    "vague": "I keep dozens of checked-out repositories and want to see which ones have unpushed work and run one command across all of them.",
+    "defined": "Must have:\n- Command line tool that registers many local git repositories\n- Shows the branch and modification state of all registered repositories side by side\n- Runs a git command on any registered repository from any working directory\n- Runs the same git command on all registered repositories in a batch\nNice to have:\n- Lets repositories be grouped\n- Runs arbitrary shell commands, not only git, on the repositories",
+    "expected": [
+      "nosarthur/gita"
+    ]
+  },
+  {
+    "id": "pos-terminal-site-monitor",
+    "vague": "I want to watch whether my websites are up and how fast they answer, from a terminal, without running a monitoring server.",
+    "defined": "Must have:\n- Command line tool, not a hosted service or a server to deploy\n- Reports uptime and response times for a URL in real time\n- Monitors several URLs at once from the command line or a config file\n- Tracks SSL certificate expiry\nNice to have:\n- Sends alerts to Slack, Discord or a webhook\n- Exports metrics to Prometheus",
+    "expected": [
+      "owloops/updo"
+    ]
+  },
+  {
+    "id": "pos-domain-name-brainstorm",
+    "vague": "When naming a side project I want to try many word combinations and see right away which web addresses are still free.",
+    "defined": "Must have:\n- Command line tool that checks whether domain names are available\n- Generates variants by combining a keyword with prefixes, suffixes and several top-level domains\n- Checks many domains concurrently and shows results as they arrive\n- Can print only the available domains\nNice to have:\n- Machine-readable output such as JSON or CSV\n- Saved presets of top-level domains",
+    "expected": [
+      "brandonyoungdev/tldx"
+    ]
+  },
+  {
+    "id": "pos-baby-care-log",
+    "vague": "As a new parent I'd like to log feedings, sleep and nappy changes on my own server and spot patterns in them.",
+    "defined": "Must have:\n- Self-hosted web application\n- Records sleep, feedings and diaper changes for a baby\n- Shows the recorded history so patterns in the baby's needs can be seen\n- Usable from a phone browser\nNice to have:\n- Several caregivers can share the same data\n- Tummy time and other activity tracking",
+    "expected": [
+      "babybuddy/babybuddy",
+      "oak-and-sprout/sprout-track"
+    ]
+  },
+  {
+    "id": "pos-bank-statement-to-csv",
+    "vague": "I'd like to turn the PDF statements my bank sends each month into spreadsheet rows without retyping them.",
+    "defined": "Must have:\n- Converts bank statement PDFs into CSV\n- Runs locally in a terminal, with no upload to a cloud service\n- Supports statements from several different banks\n- Handles password-protected statements\nNice to have:\n- OCR for scanned statements\n- Usable as a library from Python code",
+    "expected": [
+      "benjamin-awd/monopoly"
+    ]
+  },
+  {
+    "id": "pos-invoice-data-extraction",
+    "vague": "Our accounting inbox fills with supplier PDFs and I want the amounts, dates and invoice numbers pulled out automatically.",
+    "defined": "Must have:\n- Extracts structured data (such as date, amount and invoice number) from invoice PDFs\n- Handles different invoice layouts through templates written by the user\n- Usable both as a command line tool and as a library\n- Works without a paid cloud service\nNice to have:\n- OCR fallback for scanned invoices\n- Output as JSON, CSV or XML",
+    "expected": [
+      "invoice-x/invoice2data"
+    ]
+  },
+  {
+    "id": "pos-csv-json-into-sqlite",
+    "vague": "I regularly get CSV and JSON exports and want to load them into a local database file and query them from the shell.",
+    "defined": "Must have:\n- Command line tool for working with SQLite databases\n- Loads CSV, TSV or JSON data into a table directly from a pipe or a file\n- Runs SQL queries from the command line and returns results as JSON\n- Also usable as a Python library\nNice to have:\n- Sets up full-text search on a table\n- Changes table schemas in ways plain ALTER TABLE does not allow",
+    "expected": [
+      "simonw/sqlite-utils"
+    ]
+  },
+  {
+    "id": "pos-calendar-contacts-sync",
+    "vague": "I want my calendar and address book kept as plain files on my laptop so my own programs can edit them, while staying in sync with my server.",
+    "defined": "Must have:\n- Command line tool that synchronises calendars and address books\n- Works between a remote server and a local folder of files\n- Syncs changes in both directions\n- Supports CalDAV and CardDAV servers\nNice to have:\n- Can also sync between two servers\n- Runs unattended from a scheduler",
+    "expected": [
+      "pimutils/vdirsyncer"
+    ]
+  },
+  {
+    "id": "pos-gps-track-video",
+    "vague": "I recorded a cycling trip with a GPS watch and want to turn the route into a video of a dot moving across a map.",
+    "defined": "Must have:\n- Creates a video from one or more GPS track files\n- Draws the route on a map background\n- Works from the command line, not only through a GUI\n- Reads GPX files\nNice to have:\n- Different map tile sources\n- Control over video length and speed",
+    "expected": [
+      "gpx-animator/gpx-animator"
+    ]
+  },
+  {
+    "id": "pos-photo-library-duplicates",
+    "vague": "My self-hosted photo library is full of near-identical shots and I'd like a tool that finds them by how they look and helps me clear them out.",
+    "defined": "Must have:\n- Finds duplicate and similar photos in an existing self-hosted photo library\n- Matches by visual similarity, not only by identical file hashes\n- Lets the user review groups of duplicates before deleting anything\n- Deleted photos can be recovered\nNice to have:\n- Suggests which photo of a group to keep automatically\n- Adjustable similarity threshold",
+    "expected": [
+      "razgrizhsu/immich-deduper"
+    ]
+  },
+  {
+    "id": "pos-organise-photos-by-metadata",
+    "vague": "I have thousands of photos and videos dumped in random folders and want them sorted into folders by when and where they were taken.",
+    "defined": "Must have:\n- Command line tool that organises photos and videos into a folder structure\n- Uses metadata embedded in the files (date, location) to decide where each file goes\n- Imports from a source folder to a destination folder\n- Names folders after the place where each file was taken, translated from its GPS coordinates\n- Can preview what it would do without changing any file\nNice to have:\n- Customisable folder structure\n- Handles audio files too",
+    "expected": [
+      "jmathai/elodie"
+    ]
+  },
+  {
+    "id": "pos-strip-image-metadata",
+    "vague": "Before sharing pictures I want to wipe the hidden location and camera details from a whole folder of them.",
+    "defined": "Must have:\n- Removes embedded metadata from images\n- Processes a folder of files in one batch\n- Runs locally and sends nothing over the network\n- Shows the metadata of a file before and after cleaning\n- Desktop application usable on Linux, macOS and Windows\nNice to have:\n- Cleans PDFs and media files too\n- Keeps the image orientation",
+    "expected": [
+      "sztheory/exifcleaner"
+    ]
+  },
+  {
+    "id": "pos-sonic-playlists",
+    "vague": "My music server has thousands of tracks I forgot about and I want playlists built from how songs sound rather than from their tags.",
+    "defined": "Must have:\n- Self-hosted tool that analyses the audio of a personal music library\n- Generates playlists from sound similarity, not from metadata\n- Works with an existing self-hosted media server\n- Can start from one song and find similar ones in the library\nNice to have:\n- Clusters the library into groups automatically\n- Runs with Docker Compose",
+    "expected": [
+      "neptunehub/audiomuse-ai"
+    ]
+  },
+  {
+    "id": "pos-subtitle-download",
+    "vague": "I'd like one command that looks at my video files and fetches matching subtitles in the languages I choose.",
+    "defined": "Must have:\n- Command line tool that downloads subtitles for video files\n- Picks the subtitles that best match each video\n- Lets the user choose one or more languages\n- Scans a folder of videos\nNice to have:\n- Usable as a Python library\n- Skips videos that already have subtitles",
+    "expected": [
+      "diaoul/subliminal"
+    ]
+  },
+  {
+    "id": "pos-pgp-key-manager",
+    "vague": "Managing my PGP keyring with raw shell commands is tedious and I'd like a friendlier screen in the terminal for listing, exporting and signing keys.",
+    "defined": "Must have:\n- Interactive interface that runs inside the terminal\n- Lists the keys in an existing PGP keyring\n- Exports and signs keys from the interface\n- Imports and deletes keys\nNice to have:\n- Falls back to the command line for advanced operations\n- Selectable colour styles",
+    "expected": [
+      "orhun/gpg-tui"
+    ]
+  },
+  {
+    "id": "pos-container-to-run-command",
+    "vague": "I started a container by hand months ago, lost the command, and want to get the exact options back so I can start an identical one elsewhere.",
+    "defined": "Must have:\n- Command line tool that reads an existing container\n- Prints the full docker run command that would create a similar container\n- Includes ports, volumes and environment variables in that command\n- Can read the output of docker inspect from standard input\nNice to have:\n- Pretty-prints the command over several lines\n- Works from a container name or id",
+    "expected": [
+      "lavie/runlike"
+    ]
+  },
+  {
+    "id": "pos-notebook-comparison",
+    "vague": "When two people edit the same data-science notebook, git shows an unreadable wall of JSON and I want comparison and conflict resolution that understand cells.",
+    "defined": "Must have:\n- Compares two versions of a notebook cell by cell instead of as raw JSON\n- Three-way merge of notebooks with conflict handling\n- Works from the terminal\n- Integrates with git\nNice to have:\n- Rendered web view of the comparison\n- Automatic resolution of simple conflicts",
+    "expected": [
+      "jupyter/nbdime"
+    ]
+  }
+]

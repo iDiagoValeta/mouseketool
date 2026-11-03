@@ -1,0 +1,26 @@
+[
+  {
+    "id": "neg-lease-key-dates",
+    "defined": "Must have:\n- Self-hosted web application for a tenant, not a landlord\n- Reads an uploaded lease PDF and extracts the notice, renewal and rent review dates\n- Sends reminders ahead of each notice deadline\n- Publishes the dates as a calendar feed\nNice to have:\n- Lets the user correct extracted dates by hand\n- Keeps a history of rent changes"
+  },
+  {
+    "id": "neg-terminal-runbook",
+    "defined": "Must have:\n- Records a shell session and turns it into a step-by-step runbook in Markdown\n- Replaces hostnames, addresses and secret-looking values with named placeholders automatically\n- Keeps the output of each command next to the command, trimmed to the relevant lines\n- Runs locally with no cloud service\nNice to have:\n- Lets a teammate replay the runbook with their own placeholder values\n- Flags commands that were typed and then undone"
+  },
+  {
+    "id": "neg-practice-tempo-log",
+    "defined": "Must have:\n- Records the user practising an instrument through the microphone\n- Detects the tempo actually played, not the metronome setting\n- Stores one entry per piece and per session\n- Charts the tempo progress of each piece over weeks\nNice to have:\n- Warns when the player speeds up during a passage\n- Exports the log as CSV"
+  },
+  {
+    "id": "neg-shopping-list-route",
+    "defined": "Must have:\n- Self-hosted shared shopping list used from a phone\n- Learns the order of aisles of each store from the order in which items are checked off\n- Sorts the list by the learned walking route of the chosen store\n- Several people can edit the same list\nNice to have:\n- Remembers items that are bought often\n- Works offline in the shop"
+  },
+  {
+    "id": "neg-sub-meter-bill-split",
+    "defined": "Must have:\n- Self-hosted application for a shared flat or a small building\n- Reads a photo of each sub-meter with OCR and records the reading\n- Splits each utility bill between people in proportion to their metered consumption\n- Produces a statement for each person\nNice to have:\n- Flags a reading that is lower than the previous one\n- Sends the statement by email"
+  },
+  {
+    "id": "neg-notes-open-actions",
+    "defined": "Must have:\n- Command line tool that scans a folder of Markdown meeting notes\n- Collects action items assigned to each person across all files\n- Marks an action item as done when a later note says it was completed\n- Prints a list of the items still open per person\nNice to have:\n- Shows how long each item has been open\n- Output as Markdown or JSON"
+  }
+]
