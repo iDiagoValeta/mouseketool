@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { searchCandidates, TooManyQueriesError } from '../../src/application/search-candidates.ts';
 import type { Candidate } from '../../src/domain/candidate.ts';
+import type { RepositorySource } from '../../src/application/ports/repository-source.ts';
 import { InMemorySource } from '../doubles/in-memory-source.ts';
 import { MemoryRunLog } from '../doubles/memory-run-log.ts';
 
@@ -61,6 +62,26 @@ describe('searchCandidates', () => {
 
     expect(result.errors).toEqual([{ query: 'bad', message: 'rate limited' }]);
     expect(result.candidates.map((c) => c.name)).toEqual(['foo/bar']);
+  });
+
+  it('sends the queries one at a time, in order', async () => {
+    const events: string[] = [];
+    const inner = new InMemorySource({ failingQueries: { b: 'boom' } });
+    const source = Object.create(inner) as RepositorySource;
+    source.search = async (query, perQuery) => {
+      events.push(`start ${query}`);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      events.push(`end ${query}`);
+      return inner.search(query, perQuery);
+    };
+
+    const result = await searchCandidates(
+      { source, log: new MemoryRunLog() },
+      { queries: ['a', 'b', 'c'] },
+    );
+
+    expect(events).toEqual(['start a', 'end a', 'start b', 'end b', 'start c', 'end c']);
+    expect(result.errors).toEqual([{ query: 'b', message: 'boom' }]);
   });
 
   it('caps the merged list at 40 candidates', async () => {

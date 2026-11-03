@@ -109,6 +109,62 @@ describe('GitHubSource.search', () => {
   });
 });
 
+describe('GitHubSource.search quota', () => {
+  const searchReply = (remaining: string, resetInS: number): Reply => ({
+    json: { items: [] },
+    headers: {
+      'x-ratelimit-remaining': remaining,
+      'x-ratelimit-reset': String(NOW / 1000 + resetInS),
+    },
+  });
+
+  it('sleeps until the reset before the search that follows an exhausted quota', async () => {
+    const { source, seen, clock } = setup({
+      '/search/repositories': () => (seen.length === 1 ? searchReply('0', 30) : { json: { items: [] } }),
+    });
+
+    await source.search('a', 5);
+    expect(clock.sleeps).toEqual([]);
+    await source.search('b', 5);
+
+    expect(clock.sleeps).toEqual([30_000]);
+    expect(seen).toHaveLength(2);
+  });
+
+  it('throws RateLimitedError without a request when the reset is 61 s away', async () => {
+    const { source, seen, clock } = setup({ '/search/repositories': searchReply('0', 61) });
+
+    await source.search('a', 5);
+    const error = await source.search('b', 5).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RateLimitedError);
+    expect((error as RateLimitedError).resetAt).toEqual(new Date((NOW / 1000 + 61) * 1000));
+    expect(seen).toHaveLength(1);
+    expect(clock.sleeps).toEqual([]);
+  });
+
+  it('does not sleep when requests remain', async () => {
+    const { source, clock } = setup({ '/search/repositories': searchReply('3', 30) });
+
+    await source.search('a', 5);
+    await source.search('b', 5);
+
+    expect(clock.sleeps).toEqual([]);
+  });
+
+  it('waits only once per exhausted quota', async () => {
+    const { source, seen, clock } = setup({
+      '/search/repositories': () => (seen.length === 1 ? searchReply('0', 30) : { json: { items: [] } }),
+    });
+
+    await source.search('a', 5);
+    await source.search('b', 5);
+    await source.search('c', 5);
+
+    expect(clock.sleeps).toEqual([30_000]);
+  });
+});
+
 describe('a failing fetch', () => {
   function sourceWhoseFetchRejects(error: Error): GitHubSource {
     const clock = new FakeClock(NOW);
