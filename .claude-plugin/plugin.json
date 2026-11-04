@@ -1,7 +1,7 @@
 {
   "name": "mouseketool",
   "version": "0.1.0",
-  "description": "A tool to find useful tools on github.",
+  "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
   "mcpServers": {
     "mouseketool": {
       "command": "node",

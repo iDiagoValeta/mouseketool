@@ -1,0 +1,13 @@
+{
+  "core": ["src/domain", "src/application"],
+  "ports": ["src/application/ports"],
+  "driving_adapters": ["src/infrastructure/mcp"],
+  "driven_adapters": ["src/infrastructure/github", "src/infrastructure/run-log"],
+  "composition_root": ["src/composition-root.ts", "src/main.ts"],
+  "forbidden_in_core": [
+    "@modelcontextprotocol",
+    "node:child_process",
+    "node:fs",
+    "node:fs/promises"
+  ]
+}
