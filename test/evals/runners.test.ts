@@ -123,8 +123,8 @@ describe('ClaudeRunner', () => {
     expect(result.finalText).toBe(parseClaudeOutput(claudeFixture));
     const [file, args, options] = calls[0]!;
     expect(file).toBe('claude');
-    // The host keeps the file tools a real session has, but only inside work/: `dontAsk` denies anything not
-    // pre-approved, such as reading the MCP config beside it or the gh login in HOME. No Bash or web tools.
+    // The host keeps a real session's read-only file tools, but only inside work/: `dontAsk` denies anything not
+    // pre-approved, such as reading the MCP config beside it or the gh login in HOME. No write, Bash or web tools.
     expect(args).toEqual([
       '-p', 'an idea',
       '--model', 'claude-sonnet-5-5',
@@ -134,9 +134,9 @@ describe('ClaudeRunner', () => {
       '--no-session-persistence',
       '--mcp-config', '/ws/mcp.json',
       '--permission-mode', 'dontAsk',
-      '--tools', 'Skill,Read,Glob,Grep,Edit,Write',
+      '--tools', 'Skill,Read,Glob,Grep',
       '--allowedTools',
-      'mcp__mouseketool__search_repositories,mcp__mouseketool__inspect_repository,mcp__mouseketool__read_repository_file,Skill,Read(./**),Glob(./**),Grep(./**),Edit(./**),Write(./**)',
+      'mcp__mouseketool__search_repositories,mcp__mouseketool__inspect_repository,mcp__mouseketool__read_repository_file,Skill,Read(./**),Glob(./**),Grep(./**)',
     ]);
     expect(options.cwd).toBe('/ws/work');
   });

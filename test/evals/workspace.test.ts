@@ -121,6 +121,12 @@ describe('readRunLog', () => {
     expect(readRunLog(ws)).toEqual({ triggered: true, searchedRepos: ['a/b'], inspectedRepos: [] });
   });
 
+  it('counts a run whose only log line is torn as triggered', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    writeFileSync(ws.runLog, '{"tool":"search_rep\n');
+    expect(readRunLog(ws).triggered).toBe(true);
+  });
+
   it('does not count a lone read_repository_file call as the method running', () => {
     // A host with no local file tools may try the server's file reader on a local path for a small task.
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);

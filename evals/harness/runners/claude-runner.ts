@@ -69,8 +69,9 @@ export class ClaudeRunner implements Runner {
   async run(prompt: string, workspace: string): Promise<{ finalText: string }> {
     const tools = [...MCP_TOOLS, 'Skill'];
     // A real session has file tools, and without them the host answers a small task by misusing the server's
-    // tools on local paths. They are scoped to work/, which `createWorkspace` keeps free of the token.
-    const fileTools = ['Read', 'Glob', 'Grep', 'Edit', 'Write'];
+    // tools on local paths. They are scoped to work/, which `createWorkspace` keeps free of the token, and
+    // read-only: write access to work/.claude would let the host plant a skill with hooks that run as the author.
+    const fileTools = ['Read', 'Glob', 'Grep'];
     return {
       finalText: await runClaude(this.exec, this.env, {
         prompt,
