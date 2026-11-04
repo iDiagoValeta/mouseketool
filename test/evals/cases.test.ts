@@ -8,14 +8,15 @@ const cases = loadCases('evals/cases');
 const oldDefined = JSON.parse(readFileSync('test/evals/fixtures/defined-prompts.json', 'utf8')) as Record<string, string>;
 
 describe('loadCases', () => {
-  it('returns 20 positive, 6 negative and 6 trigger cases', () => {
+  it('returns 20 positive, 6 negative, 6 trigger and 6 partial cases', () => {
     expect(cases.positive).toHaveLength(20);
     expect(cases.negative).toHaveLength(6);
     expect(cases.trigger).toHaveLength(6);
+    expect(cases.partial).toHaveLength(6);
   });
 
   it('uses unique ids across all sets', () => {
-    const ids = [...cases.positive, ...cases.negative, ...cases.trigger].map((c) => c.id);
+    const ids = [...cases.positive, ...cases.negative, ...cases.trigger, ...cases.partial].map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -125,4 +126,43 @@ describe('negative cases', () => {
       expect(c.defined.niceToHaves.length).toBeGreaterThanOrEqual(1);
     },
   );
+});
+
+describe('partial cases', () => {
+  // Words of a foundation's name that the brief's text keeps on purpose, because they only name the domain and
+  // do not point at the project: "story" is inside "history" (git-story). The leak test stays strict for every other word.
+  const domainWords: Record<string, string[]> = {
+    'partial-git-history-narrated-video': ['story'],
+  };
+
+  it.each(cases.partial.map((c) => [c.id, c] as const))('%s is well formed', (_id, c) => {
+    expect(c.mustHaves.length).toBeGreaterThan(0);
+    expect(c.foundationMustHaves.length).toBeGreaterThan(0);
+    expect(c.knownFoundations.length).toBeGreaterThan(0);
+    for (const repo of c.knownFoundations) {
+      expect(parseRepoName(repo)).toBe(repo);
+    }
+    expect(new Set(c.knownFoundations).size).toBe(c.knownFoundations.length);
+  });
+
+  it.each(cases.partial.map((c) => [c.id, c] as const))('%s text is one sentence', (_id, c) => {
+    expect(c.text.trim().split(/[.!?]\s+\S/)).toHaveLength(1);
+  });
+
+  it.each(cases.partial.map((c) => [c.id, c] as const))(
+    '%s text has no long word from the owner or name of a known foundation',
+    (_id, c) => {
+      const text = c.text.toLowerCase();
+      for (const repo of c.knownFoundations) {
+        const words = repo.split(/[-_/]/).filter((word) => word.length >= 5);
+        for (const word of words.filter((w) => !(domainWords[c.id] ?? []).includes(w))) {
+          expect(text).not.toContain(word);
+        }
+      }
+    },
+  );
+
+  it.each(cases.partial.map((c) => [c.id, c] as const))('%s text states the intent to build a new tool', (_id, c) => {
+    expect(c.text).toMatch(/\b(build|make|write|create|start)\b/i);
+  });
 });

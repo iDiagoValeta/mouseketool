@@ -42,4 +42,13 @@ pos-container-to-run-command defined lavie/runlike meets
 pos-container-to-run-command vague lavie/runlike meets
 pos-notebook-comparison defined jupyter/nbdime meets
 pos-notebook-comparison vague jupyter/nbdime meets
-CALIBRATED: every case has a known match that meets both versions
+partial-ascii-concept-animation foundation peterbrittain/asciimatics meets
+partial-ascii-concept-animation foundation chrisbuilds/terminaltexteffects meets
+partial-git-history-narrated-video foundation acaudwell/gource meets
+partial-git-history-narrated-video foundation initialcommit-com/git-story meets
+partial-discord-rpg-game-master foundation avrae/avrae meets
+partial-fridge-photo-meal-plan foundation mealie-recipes/mealie meets
+partial-fridge-photo-meal-plan foundation tandoorrecipes/recipes meets
+partial-k8s-city-terminal foundation derailed/k9s meets
+partial-shell-history-weekly-report foundation atuinsh/atuin meets
+CALIBRATED: every positive case has a known match that meets both versions and every partial case a known foundation that meets its foundation requirements

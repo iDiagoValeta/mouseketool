@@ -112,13 +112,13 @@ describe('removeLiveWorkspaces', () => {
 describe('readRunLog', () => {
   it('has no calls when the server never ran', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
-    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [] });
+    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [], fileReads: 0 });
   });
 
   it('skips a line that does not parse but still counts the run as triggered', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(ws.runLog, '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_rep\n');
-    expect(readRunLog(ws)).toEqual({ triggered: true, searchedRepos: ['a/b'], inspectedRepos: [] });
+    expect(readRunLog(ws)).toEqual({ triggered: true, searchedRepos: ['a/b'], inspectedRepos: [], fileReads: 0 });
   });
 
   it('counts a run whose only log line is torn as triggered', () => {
@@ -131,7 +131,7 @@ describe('readRunLog', () => {
     // A host with no local file tools may try the server's file reader on a local path for a small task.
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(ws.runLog, '{"tool":"read_repository_file","repos":[]}\n');
-    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [] });
+    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [], fileReads: 1 });
   });
 
   it('counts an inspect without a search as the method running', () => {
@@ -157,6 +157,29 @@ describe('readRunLog', () => {
       triggered: true,
       searchedRepos: ['a/b', 'c/d', 'e/f'],
       inspectedRepos: ['x/y'],
+      fileReads: 1,
     });
+  });
+
+  it('counts every read_repository_file line as a file read, failed calls (no repos logged) included', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    writeFileSync(
+      ws.runLog,
+      [
+        '{"tool":"search_repositories","repos":["a/b"]}',
+        '{"tool":"read_repository_file","repos":["a/b"]}',
+        '{"tool":"read_repository_file","repos":[]}',
+        '{"tool":"read_repository_file","repos":["a/b"]}',
+        '{"tool":"inspect_repository","repos":["a/b"]}',
+        '',
+      ].join('\n'),
+    );
+    expect(readRunLog(ws).fileReads).toBe(3);
+  });
+
+  it('counts no file read when the log has only searches and inspects', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    writeFileSync(ws.runLog, '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_repository","repos":["a/b"]}\n');
+    expect(readRunLog(ws).fileReads).toBe(0);
   });
 });

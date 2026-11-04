@@ -202,6 +202,7 @@ The eval in `evals/` runs the whole method headless, one case after another, aga
 - **20 positive cases** built on real, not famous, projects, so a model cannot answer from memory. Each has two versions: a vague one-sentence intent to build, and a defined list of must-haves and nice-to-haves. Each version carries its own concrete must-haves.
 - **6 negative cases**: invented ideas no real project covers. The right answer is to build.
 - **6 trigger cases**: small tasks where the skill must stay silent.
+- **6 partial cases**: ideas a mature project covers only in part, such as an animated ASCII illustration tool on top of an ASCII animation library. The right answer is `base` with that project. Each has the whole idea's must-haves and the narrower must-haves a project needs to be the right base.
 
 ### Scoring
 
@@ -215,11 +216,15 @@ Any project that meets the must-haves counts, not only the one the case was buil
 
 A **negative** run passes with `build` or `base`. It fails with no verdict line, or with `reuse` or `adapt` of a project the judge rejects or the search never returned. If the judge accepts the recommended project, a real project covers the case, and the pass is reported as a FAIL until the case is replaced.
 
-A **trigger** run passes when the server was never called.
+A **partial** run is a hit when the host answers `base` with a project from the search results that the judge confirms meets the base's must-haves (up to 3 recommended projects are judged). `build` misses, because a mature base exists. `reuse` or `adapt` misses, unless the judge finds that a recommended project meets the whole idea: then the case is wrong and is reported as a FAIL until it is replaced.
+
+Every positive hit, partial hit and negative pass also needs the host to have read code with `read_repository_file`, as the skill requires. A run that would pass without it scores as a miss and is flagged `noCodeRead`.
+
+A **trigger** run passes when the host never searched or inspected a repository: the method never started.
 
 ### Hosts and isolation
 
-Runs are split between Claude Code with Sonnet 5.5 and opencode with `deepseek/deepseek-flash`, about 30 and 20 per pass, rotating between passes. Both hosts must be installed and logged in.
+Runs are split between Claude Code with Sonnet 5.5 and opencode with `deepseek/deepseek-flash`, about 36 and 22 per pass, rotating between passes. Both hosts must be installed and logged in.
 
 Hosts read untrusted READMEs and code, and the server they start needs the GitHub token. So each run gets a fresh `0700` directory, an allowlisted environment, and no shell or web tools:
 
@@ -231,22 +236,28 @@ Interrupting the eval removes the live workspaces.
 ### Running it
 
 ```bash
-pnpm eval --calibrate      # judge each case's known projects first: checks the judge and the requirements
+pnpm eval --calibrate      # judge each case's known projects (and each partial case's known bases) first: checks the judge and the requirements
 pnpm eval --pass 0         # a full pass; --only <caseId> and --host <host> run a subset
 ```
 
-Reports are written to `.dev/eval-reports/`. A pass succeeds when every host, on its own share, reaches hits on at least 80% of defined inputs and 60% of vague ones, gets at least 5 of 6 negatives right, and never triggers on a small task.
+Reports are written to `.dev/eval-reports/`. A pass succeeds when every host, on its own share, reaches hits on at least 80% of defined inputs and 60% of vague ones, gets at least 5 of 6 negatives right, reaches at least half of its partial cases, and never triggers on a small task.
 
 ### Results
 
-Pass 0 on 2026-11-04 with the final code, 52 runs, both hosts within every threshold. The Sonnet share was rerun after its file tools were made read-only, and the opencode share is unchanged since:
+Pass 0 on 2026-11-04 with the code in `main`: 58 runs, and both hosts are within every threshold. One negative case turned out to be covered by a real project, so it was replaced, and its replacement was run on its own:
 
-| Host | Runs | Defined | Vague | Negatives | Small tasks |
-|---|---|---|---|---|---|
-| Claude Code, Sonnet 5.5 | 32 | 92% | 75% | 100% | 100% |
-| opencode, deepseek-flash | 20 | 100% | 100% | 100% | 100% |
+| Host | Runs | Defined | Vague | Partial | Negatives | Small tasks |
+|---|---|---|---|---|---|---|
+| Claude Code, Sonnet 5.5 | 36 | 92% | 83% | 100% | 100% | 100% |
+| opencode, deepseek-flash | 22 | 100% | 100% | 50% | 100% | 100% |
 
-In three cases the host recommended a mature project other than the one the case was built on, and the judge confirmed it meets the must-haves: `time4tea/gopro-dashboard-overlay` for GPS track videos, `abhixdd/uptimekit-cli` for terminal site monitoring and `exiftool/exiftool` for stripping image metadata. Sonnet's vague misses recommended the right project but had not found it through the search, so the eval counts them as answers from memory. Its defined miss recommended a domain checker that cannot print only the available names, a must-have of that case.
+**Alternatives.** Hosts often recommended a mature project other than the one a case was built on, and the judge confirmed it. Examples are `time4tea/gopro-dashboard-overlay` for GPS track videos and `kdash-rs/kdash` as the base for a Kubernetes city view in the terminal. In that last case the host also found `braveadmin/kube-city`, read its code, and showed that it no longer has a terminal view and ignores CPU load, so `base` was the right call.
+
+**Misses.**
+- **Sonnet.** Its misses recommended the right project without having found it through the search, so the eval counts them as answers from memory.
+- **DeepSeek.** Its partial miss chose a narrative tool that is not a Discord bot.
+
+**The replaced case.** `neg-sub-meter-bill-split` was covered by `andis382/onemeter`, a 0-star project that does exactly what that case asked for.
 
 Every run, with the host's full answer and the judge's verdicts, is in [`evals/results/2026-11-04/`](evals/results/2026-11-04/README.md).
 

@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { loadCases } from '../cases/schema.ts';
 import { ghAuthToken, resolveToken } from '../../src/infrastructure/github/token.ts';
-import { calibrate } from './calibrate.ts';
+import { calibrate, calibratePartial } from './calibrate.ts';
 import { CachedJudge, ClaudeJudge } from './judge.ts';
 import { HOSTS, MODELS, planRuns, type Host, type Run } from './plan-runs.ts';
 import { ClaudeRunner } from './runners/claude-runner.ts';
@@ -72,13 +72,22 @@ const judge = new CachedJudge(new ClaudeJudge(repoRoot, githubToken), join(repor
 
 if (calibrating) {
   // Checks the judge and the requirements before a real pass: no host runs.
-  const positive = cases.positive.filter((c) => values.only === undefined || c.id === values.only);
-  if (positive.length === 0) {
-    console.error(`No positive case matches --only ${values.only ?? '*'}`);
+  const chosen = (id: string) => values.only === undefined || id === values.only;
+  const positive = cases.positive.filter((c) => chosen(c.id));
+  const partial = cases.partial.filter((c) => chosen(c.id));
+  if (positive.length + partial.length === 0) {
+    console.error(`No positive or partial case matches --only ${values.only ?? '*'}`);
     process.exit(USAGE);
   }
-  const calibrated = await calibrate(positive, judge, console.log);
-  console.log(calibrated ? 'CALIBRATED: every case has a known match that meets both versions' : 'NOT CALIBRATED: fix the cases above before a real pass');
+  // Both run before the verdict so one failing set does not hide the lines of the other.
+  const positiveCalibrated = await calibrate(positive, judge, console.log);
+  const partialCalibrated = await calibratePartial(partial, judge, console.log);
+  const calibrated = positiveCalibrated && partialCalibrated;
+  console.log(
+    calibrated
+      ? 'CALIBRATED: every positive case has a known match that meets both versions and every partial case a known foundation that meets its foundation requirements'
+      : 'NOT CALIBRATED: fix the cases above before a real pass',
+  );
   process.exit(calibrated ? 0 : 1);
 }
 
@@ -141,7 +150,7 @@ const { summaries, passed } = report;
 for (const s of summaries) {
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   console.log(
-    `${s.host}: hit defined ${pct(s.hitDefined)}, vague ${pct(s.hitVague)}, negatives ${pct(s.negatives)}, triggers ${pct(s.triggers)}`,
+    `${s.host}: hit defined ${pct(s.hitDefined)}, vague ${pct(s.hitVague)}, negatives ${pct(s.negatives)}, triggers ${pct(s.triggers)}, partials ${pct(s.partials)}`,
   );
 }
 

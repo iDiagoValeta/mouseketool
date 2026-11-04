@@ -10,25 +10,37 @@ function hostCounts(pass: number): number[] {
 }
 
 describe('planRuns', () => {
-  it('plans 40 positive, 6 negative and 6 trigger runs', () => {
+  it('plans 40 positive, 6 negative, 6 trigger and 6 partial runs', () => {
     const runs = planRuns(cases, 0);
-    expect(runs).toHaveLength(52);
+    expect(runs).toHaveLength(58);
+    expect(runs.filter((run) => run.kind === 'partial')).toHaveLength(6);
     expect(runs.filter((run) => run.kind === 'positive-vague')).toHaveLength(20);
     expect(runs.filter((run) => run.kind === 'positive-defined')).toHaveLength(20);
     expect(runs.filter((run) => run.kind === 'negative')).toHaveLength(6);
     expect(runs.filter((run) => run.kind === 'trigger')).toHaveLength(6);
   });
 
-  it('plans 32 Sonnet and 20 DeepSeek runs in pass 0', () => {
+  it('plans 36 Sonnet and 22 DeepSeek runs in pass 0, each host with at least one partial run', () => {
     expect(HOSTS).toEqual(['claude-sonnet', 'opencode-deepseek-flash']);
-    expect(hostCounts(0)).toEqual([32, 20]);
+    expect(hostCounts(0)).toEqual([36, 22]);
+    const partials = planRuns(cases, 0).filter((run) => run.kind === 'partial');
+    expect(partials.filter((run) => run.host === 'claude-sonnet')).toHaveLength(4);
+    expect(partials.filter((run) => run.host === 'opencode-deepseek-flash')).toHaveLength(2);
+  });
+
+  it('appends the partial runs after the trigger runs, so the earlier runs keep their index', () => {
+    const runs = planRuns(cases, 0);
+    expect(runs.slice(0, 52).every((run) => run.kind !== 'partial')).toBe(true);
+    expect(runs.slice(52).map((run) => run.caseId)).toEqual(cases.partial.map((c) => c.id));
+    const without = planRuns({ ...cases, partial: [] }, 0);
+    expect(runs.slice(0, 52)).toEqual(without);
   });
 
   it('gives every host at least one run of every kind in every pass', () => {
     for (const pass of [0, 1, 2, 3, 4, 7]) {
       const runs = planRuns(cases, pass);
       for (const host of HOSTS) {
-        for (const kind of ['positive-vague', 'positive-defined', 'negative', 'trigger']) {
+        for (const kind of ['positive-vague', 'positive-defined', 'negative', 'trigger', 'partial']) {
           expect(runs.filter((r) => r.host === host && r.kind === kind).length, `${host} ${kind} pass ${pass}`).toBeGreaterThan(0);
         }
       }
@@ -57,6 +69,8 @@ describe('planRuns', () => {
     expect(runs.find((r) => r.caseId === negative.id)!.prompt).toBe(renderDefined(negative.defined));
     const trigger = cases.trigger[0]!;
     expect(runs.find((r) => r.caseId === trigger.id)!.prompt).toBe(trigger.prompt);
+    const partial = cases.partial[0]!;
+    expect(runs.find((r) => r.caseId === partial.id)!.prompt).toBe(partial.text);
   });
 
   it('carries the requirements to score each prompt against', () => {
@@ -67,6 +81,11 @@ describe('planRuns', () => {
     const negative = cases.negative[0]!;
     expect(runs.find((r) => r.caseId === negative.id)!.mustHaves).toEqual(negative.defined.mustHaves);
     expect(runs.find((r) => r.kind === 'trigger')!.mustHaves).toBeUndefined();
+    const partial = cases.partial[0]!;
+    const partialRun = runs.find((r) => r.caseId === partial.id)!;
+    expect(partialRun.mustHaves).toEqual(partial.mustHaves);
+    expect(partialRun.foundationMustHaves).toEqual(partial.foundationMustHaves);
+    expect(runs.filter((r) => r.kind !== 'partial').every((r) => r.foundationMustHaves === undefined)).toBe(true);
   });
 
   it('names the models of the two hosts', () => {

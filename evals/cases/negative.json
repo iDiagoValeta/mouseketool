@@ -61,17 +61,17 @@
     }
   },
   {
-    "id": "neg-sub-meter-bill-split",
+    "id": "neg-seed-library-germination",
     "defined": {
       "mustHaves": [
-        "Self-hosted application for a shared flat or a small building",
-        "Reads a photo of each sub-meter with OCR and records the reading",
-        "Splits each utility bill between people in proportion to their metered consumption",
-        "Produces a statement for each person"
+        "Self-hosted web application for a community seed library",
+        "Reads a photo of a seed packet with OCR and records the variety and harvest year",
+        "Records germination test results for each batch of seeds",
+        "Emails the members who borrowed a variety when its germination rate falls below a set threshold"
       ],
       "niceToHaves": [
-        "Flags a reading that is lower than the previous one",
-        "Sends the statement by email"
+        "Suggests which varieties should be grown out again this season",
+        "Prints labels for repackaged seeds"
       ]
     }
   },

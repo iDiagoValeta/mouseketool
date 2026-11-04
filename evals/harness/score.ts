@@ -3,12 +3,16 @@ import type { Judge, Judgment } from './judge.ts';
 import { HOSTS, type Host, type Run } from './plan-runs.ts';
 import { parseVerdict } from './verdict.ts';
 
-/** `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass. */
-export type Outcome = { finalText: string; searchedRepos: RepoName[]; triggered: boolean; error?: string };
+/**
+ * `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass.
+ * `fileReads` is how many times the host called `read_repository_file`.
+ */
+export type Outcome = { finalText: string; searchedRepos: RepoName[]; triggered: boolean; fileReads: number; error?: string };
 
 /**
  * `verdict` is the pass/fail of the run (the hit for a positive one). `retrieval` is diagnostic only.
- * `judgments` is present when the judge was asked; `caseCovered` marks a negative case that a real project meets.
+ * `judgments` is present when the judge was asked; `caseCovered` marks a negative or partial case that a real
+ * project meets. `noCodeRead` marks a run that would have passed but read no code, which the skill requires.
  */
 export type Score = {
   retrieval?: boolean;
@@ -16,6 +20,7 @@ export type Score = {
   judgments?: Judgment[];
   judgeError?: string;
   caseCovered?: boolean;
+  noCodeRead?: boolean;
 };
 
 /** Repos the judge is asked about per run: the answer's first picks, not a whole list of alternatives. */
@@ -42,10 +47,19 @@ async function judgeUntilMeets(
 }
 
 /**
+ * A run that passes only counts when the host read code first, as the skill requires.
+ * Otherwise it scores false and says why, so the report does not read it as a plain miss.
+ */
+function requireCodeRead(passes: boolean, outcome: Outcome): { verdict: boolean; noCodeRead?: true } {
+  return passes && outcome.fileReads < 1 ? { verdict: false, noCodeRead: true } : { verdict: passes };
+}
+
+/**
  * The server's run log says which repos the search returned, so it holds for any host and catches a model
  * that answers from memory: only recommended repos that the search returned are judged, not ones the model
  * merely inspected. The verdict line is read from the answer; whether a recommended repo is good is decided
- * by the judge, against the requirements.
+ * by the judge, against the requirements. Any pass also needs the host to have read code (`fileReads`),
+ * except a trigger run, which is about not calling the server at all.
  */
 export async function scoreRun(
   run: Run,
@@ -72,12 +86,38 @@ export async function scoreRun(
     // so they miss, unless a recommended project does meet every requirement: then the case itself is wrong
     // and it passes flagged, so the author replaces it. No verdict line is a miss.
     if (verdict === null) return { verdict: false };
-    if (verdict.decision === 'build' || verdict.decision === 'base') return { verdict: true };
+    if (verdict.decision === 'build' || verdict.decision === 'base') return requireCodeRead(true, outcome);
     const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
     const covered = judgments.some((j) => j.meets);
     return {
-      verdict: covered,
+      ...requireCodeRead(covered, outcome),
       ...(covered ? { caseCovered: true } : {}),
+      judgments,
+      ...(judgeError === undefined ? {} : { judgeError }),
+    };
+  }
+
+  if (run.kind === 'partial') {
+    // A mature project covers the foundation only, so `base` with it is the right answer and `build` skips it.
+    // Reuse and adapt claim the whole idea is covered: a miss, unless a recommended project really covers
+    // every requirement, and then the case is wrong, so it passes flagged like a covered negative.
+    const { foundationMustHaves } = run;
+    if (foundationMustHaves === undefined || foundationMustHaves.length === 0) {
+      throw new Error(`Run "${run.caseId}" (partial) needs its foundation requirements`);
+    }
+    if (!outcome.triggered || verdict === null || verdict.decision === 'build') return { verdict: false };
+    if (verdict.decision === 'base') {
+      const { judgments, judgeError } = await judgeUntilMeets(recommended, foundationMustHaves, judge);
+      return {
+        ...requireCodeRead(judgments.some((j) => j.meets), outcome),
+        judgments,
+        ...(judgeError === undefined ? {} : { judgeError }),
+      };
+    }
+    const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
+    const covered = judgments.some((j) => j.meets);
+    return {
+      ...(covered ? { ...requireCodeRead(true, outcome), caseCovered: true } : { verdict: false }),
       judgments,
       ...(judgeError === undefined ? {} : { judgeError }),
     };
@@ -90,7 +130,7 @@ export async function scoreRun(
   const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
   return {
     retrieval,
-    verdict: judgments.some((j) => j.meets),
+    ...requireCodeRead(judgments.some((j) => j.meets), outcome),
     judgments,
     ...(judgeError === undefined ? {} : { judgeError }),
   };
@@ -101,6 +141,7 @@ export function describeScore(score: Score): string {
   return [
     score.retrieval === undefined ? '' : `retrieval=${score.retrieval ? 'ok' : 'miss'}`,
     `hit=${score.verdict ? 'ok' : 'miss'}`,
+    score.noCodeRead === true ? 'noCodeRead' : '',
     score.judgments === undefined
       ? ''
       : `judged=[${score.judgments.map((j) => `${j.repo}: ${j.meets ? 'meets' : `missing (${j.missing.join('; ')})`}`).join(', ')}]`,
@@ -116,6 +157,7 @@ export type PerHostSummary = {
   hitVague: number;
   negatives: number;
   triggers: number;
+  partials: number;
 };
 
 /** Share of passes; an empty share is 1 because nothing in it can fail. */
@@ -137,18 +179,22 @@ export function summarize(results: { run: Run; score: Score }[]): PerHostSummary
         hitVague: ratio(passes('positive-vague', (s) => s.verdict)),
         negatives: ratio(passes('negative', (s) => s.verdict)),
         triggers: ratio(passes('trigger', (s) => s.verdict)),
+        partials: ratio(passes('partial', (s) => s.verdict)),
       },
     ];
   });
 }
 
-/** Every host must meet every threshold on its own share. */
+/**
+ * Every host must meet every threshold on its own share. Partial ideas are harder than positive ones, and each
+ * host gets only 2 to 4 of them, so the bar is a half.
+ */
 export function meetsThresholds(summaries: PerHostSummary[]): boolean {
   return (
     summaries.length > 0 &&
     summaries.every(
       (s) =>
-        s.hitDefined >= 0.8 && s.hitVague >= 0.6 && s.negatives >= 5 / 6 && s.triggers === 1,
+        s.hitDefined >= 0.8 && s.hitVague >= 0.6 && s.negatives >= 5 / 6 && s.triggers === 1 && s.partials >= 0.5,
     )
   );
 }
@@ -156,7 +202,7 @@ export function meetsThresholds(summaries: PerHostSummary[]): boolean {
 export type Report = { summaries: PerHostSummary[]; passed: boolean; needsCaseReview: string[] };
 
 /**
- * A covered negative is a case a real project meets, so the case is wrong and gets replaced: whatever the
+ * A covered negative or partial is a case a real project meets, so the case is wrong and gets replaced: whatever the
  * thresholds say was measured on a broken set, so it is not a pass.
  */
 export function buildReport(

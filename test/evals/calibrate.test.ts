@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseRepoName } from '../../src/domain/repo-name.ts';
-import type { PositiveCase } from '../../evals/cases/schema.ts';
-import { calibrate } from '../../evals/harness/calibrate.ts';
+import type { PartialCase, PositiveCase } from '../../evals/cases/schema.ts';
+import { calibrate, calibratePartial } from '../../evals/harness/calibrate.ts';
 import type { Judge } from '../../evals/harness/judge.ts';
 
 const makeCase = (id: string, ...repos: string[]): PositiveCase => ({
@@ -69,5 +69,50 @@ describe('calibrate', () => {
   it('fails if any case fails, even when others pass', async () => {
     const { judge } = fake((repo) => repo === 'a/a');
     expect(await calibrate([makeCase('c1', 'a/a'), makeCase('c2', 'z/z')], judge, () => {})).toBe(false);
+  });
+});
+
+const makePartial = (id: string, ...repos: string[]): PartialCase => ({
+  id,
+  text: 'I want to build x',
+  mustHaves: ['whole a', 'whole b'],
+  foundationMustHaves: ['foundation a'],
+  knownFoundations: repos.map((r) => parseRepoName(r)),
+});
+
+describe('calibratePartial', () => {
+  it('judges every known foundation against the foundation requirements only, one line each', async () => {
+    const { judge, calls } = fake(() => true);
+    const lines: string[] = [];
+    const ok = await calibratePartial([makePartial('p1', 'a/a', 'b/b')], judge, (line) => lines.push(line));
+
+    expect(ok).toBe(true);
+    expect(calls).toEqual(['a/a foundation a', 'b/b foundation a']);
+    expect(lines).toEqual(['p1 foundation a/a meets', 'p1 foundation b/b meets']);
+  });
+
+  it('passes when at least one known foundation meets', async () => {
+    const { judge } = fake((repo) => repo === 'b/b');
+    expect(await calibratePartial([makePartial('p1', 'a/a', 'b/b')], judge, () => {})).toBe(true);
+  });
+
+  it('fails when no known foundation meets, naming the case', async () => {
+    const { judge } = fake(() => false);
+    const lines: string[] = [];
+    expect(await calibratePartial([makePartial('p1', 'a/a', 'b/b')], judge, (l) => lines.push(l))).toBe(false);
+    expect(lines).toContain('p1 foundation a/a missing: foundation a');
+    expect(lines).toContain('NOT CALIBRATED: p1 has no known foundation that meets its foundation requirements');
+  });
+
+  it('counts a judge error as not meeting and prints it', async () => {
+    const { judge } = fake(() => true, ['a/a']);
+    const lines: string[] = [];
+    expect(await calibratePartial([makePartial('p1', 'a/a')], judge, (l) => lines.push(l))).toBe(false);
+    expect(lines).toContain('p1 foundation a/a JUDGE ERROR: no verdict');
+  });
+
+  it('fails if any case fails, even when others pass', async () => {
+    const { judge } = fake((repo) => repo === 'a/a');
+    expect(await calibratePartial([makePartial('p1', 'a/a'), makePartial('p2', 'z/z')], judge, () => {})).toBe(false);
   });
 });
