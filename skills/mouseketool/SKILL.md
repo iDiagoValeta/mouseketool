@@ -1,6 +1,6 @@
 ---
 name: mouseketool
-description: Use FIRST, before you start writing a new reusable tool, app, service or library for the user, whenever they want one to exist that they have not built yet: a product idea, a wish ("I want something that...", "a way to...") or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for a one-off script that performs an immediate action on the user's own files ("write a script that renames the photos in this folder" is an action, not a tool to research), nor when the user asks to change, fix or extend code that already exists in their project.
+description: "Use FIRST, before you start writing a new reusable tool, app, service or library for the user, whenever they want one to exist that they have not built yet: a product idea, a wish (\"I want something that...\", \"a way to...\") or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for a one-off script that performs an immediate action on the user's own files (\"write a script that renames the photos in this folder\" is an action, not a tool to research), nor when the user asks to change, fix or extend code that already exists in their project."
 ---
 
 # mouseketool
