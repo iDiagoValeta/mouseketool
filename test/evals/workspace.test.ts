@@ -119,6 +119,19 @@ describe('readRunLog', () => {
     expect(readRunLog(ws)).toEqual({ triggered: true, searchedRepos: ['a/b'], inspectedRepos: [] });
   });
 
+  it('does not count a lone read_repository_file call as the method running', () => {
+    // A host with no local file tools may try the server's file reader on a local path for a small task.
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    writeFileSync(ws.runLog, '{"tool":"read_repository_file","repos":[]}\n');
+    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [] });
+  });
+
+  it('counts an inspect without a search as the method running', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    writeFileSync(ws.runLog, '{"tool":"inspect_repository","repos":["x/y"]}\n');
+    expect(readRunLog(ws).triggered).toBe(true);
+  });
+
   it('keeps the repos of search and of inspect apart, since only a search proves a repo did not come from memory', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(

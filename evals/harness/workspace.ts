@@ -92,7 +92,7 @@ export function removeLiveWorkspaces(): void {
 export type RunLog = { triggered: boolean; searchedRepos: RepoName[]; inspectedRepos: RepoName[] };
 
 /**
- * `triggered` is true when the server logged at least one line, failed calls included.
+ * `triggered` is true when the server logged a search or an inspect, failed calls included.
  * A line that does not parse still shows the server ran, so it counts as a call without repos.
  * `searchedRepos` comes from `search_repositories` lines only: those are the repos the server returned, so a
  * recommendation outside them came from the model's memory. `inspect_repository` logs the repo the model
@@ -113,8 +113,19 @@ export function readRunLog(workspace: Workspace): RunLog {
     });
     return [...new Set(repos)];
   };
+  // The method starts with a search or an inspect. A lone read_repository_file call is a host without local file
+  // tools trying the server's reader on a local path, not the skill firing. A line that does not parse is kept as
+  // a call, since it still shows the server ran something.
+  const methodRan = lines.some((line) => {
+    try {
+      const { tool } = JSON.parse(line) as { tool?: unknown };
+      return tool === 'search_repositories' || tool === 'inspect_repository';
+    } catch {
+      return true;
+    }
+  });
   return {
-    triggered: lines.length > 0,
+    triggered: methodRan,
     searchedRepos: reposOf('search_repositories'),
     inspectedRepos: reposOf('inspect_repository'),
   };
