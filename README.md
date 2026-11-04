@@ -220,7 +220,7 @@ A **partial** run is a hit when the host answers `base` with a project from the 
 
 Every positive hit, partial hit and negative pass also needs the host to have read code with `read_repository_file`, as the skill requires. A run that would pass without it scores as a miss and is flagged `noCodeRead`.
 
-A **trigger** run passes when the server was never called.
+A **trigger** run passes when the host never searched or inspected a repository: the method never started.
 
 ### Hosts and isolation
 
@@ -244,14 +244,20 @@ Reports are written to `.dev/eval-reports/`. A pass succeeds when every host, on
 
 ### Results
 
-Pass 0 on 2026-11-04 with the final code, 52 runs, both hosts within every threshold. The Sonnet share was rerun after its file tools were made read-only, and the opencode share is unchanged since:
+Pass 0 on 2026-11-04 with the code in `main`: 58 runs, and both hosts are within every threshold. One negative case turned out to be covered by a real project, so it was replaced, and its replacement was run on its own:
 
-| Host | Runs | Defined | Vague | Negatives | Small tasks |
-|---|---|---|---|---|---|
-| Claude Code, Sonnet 5.5 | 32 | 92% | 75% | 100% | 100% |
-| opencode, deepseek-flash | 20 | 100% | 100% | 100% | 100% |
+| Host | Runs | Defined | Vague | Partial | Negatives | Small tasks |
+|---|---|---|---|---|---|---|
+| Claude Code, Sonnet 5.5 | 36 | 92% | 83% | 100% | 100% | 100% |
+| opencode, deepseek-flash | 22 | 100% | 100% | 50% | 100% | 100% |
 
-In three cases the host recommended a mature project other than the one the case was built on, and the judge confirmed it meets the must-haves: `time4tea/gopro-dashboard-overlay` for GPS track videos, `abhixdd/uptimekit-cli` for terminal site monitoring and `exiftool/exiftool` for stripping image metadata. Sonnet's vague misses recommended the right project but had not found it through the search, so the eval counts them as answers from memory. Its defined miss recommended a domain checker that cannot print only the available names, a must-have of that case.
+**Alternatives.** Hosts often recommended a mature project other than the one a case was built on, and the judge confirmed it. Examples are `time4tea/gopro-dashboard-overlay` for GPS track videos and `kdash-rs/kdash` as the base for a Kubernetes city view in the terminal. In that last case the host also found `braveadmin/kube-city`, read its code, and showed that it no longer has a terminal view and ignores CPU load, so `base` was the right call.
+
+**Misses.**
+- **Sonnet.** Its misses recommended the right project without having found it through the search, so the eval counts them as answers from memory.
+- **DeepSeek.** Its partial miss chose a narrative tool that is not a Discord bot.
+
+**The replaced case.** `neg-sub-meter-bill-split` was covered by `andis382/onemeter`, a 0-star project that does exactly what that case asked for.
 
 Every run, with the host's full answer and the judge's verdicts, is in [`evals/results/2026-11-04/`](evals/results/2026-11-04/README.md).
 

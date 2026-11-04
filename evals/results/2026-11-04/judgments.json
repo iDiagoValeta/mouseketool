@@ -270,5 +270,77 @@
     "repo": "exiftool/exiftool",
     "meets": true,
     "missing": []
+  },
+  "peterbrittain/asciimatics\nLibrary or framework that renders and animates ASCII or text-mode graphics in the terminal": {
+    "repo": "peterbrittain/asciimatics",
+    "meets": true,
+    "missing": []
+  },
+  "chrisbuilds/terminaltexteffects\nLibrary or framework that renders and animates ASCII or text-mode graphics in the terminal": {
+    "repo": "chrisbuilds/terminaltexteffects",
+    "meets": true,
+    "missing": []
+  },
+  "acaudwell/gource\nRenders a git repository's history as an animated visualization or a video": {
+    "repo": "acaudwell/gource",
+    "meets": true,
+    "missing": []
+  },
+  "initialcommit-com/git-story\nRenders a git repository's history as an animated visualization or a video": {
+    "repo": "initialcommit-com/git-story",
+    "meets": true,
+    "missing": []
+  },
+  "avrae/avrae\nDiscord bot for tabletop role-playing games\nRolls dice using tabletop RPG dice notation such as 1d20+5": {
+    "repo": "avrae/avrae",
+    "meets": true,
+    "missing": []
+  },
+  "mealie-recipes/mealie\nSelf-hosted recipe manager that stores a personal recipe collection\nHas meal planning": {
+    "repo": "mealie-recipes/mealie",
+    "meets": true,
+    "missing": []
+  },
+  "tandoorrecipes/recipes\nSelf-hosted recipe manager that stores a personal recipe collection\nHas meal planning": {
+    "repo": "tandoorrecipes/recipes",
+    "meets": true,
+    "missing": []
+  },
+  "derailed/k9s\nTerminal user interface for a live Kubernetes cluster\nShows per-pod resource usage such as CPU": {
+    "repo": "derailed/k9s",
+    "meets": true,
+    "missing": []
+  },
+  "atuinsh/atuin\nRecords shell command history with timestamps and the working directory of each command\nLets the history be queried or exported": {
+    "repo": "atuinsh/atuin",
+    "meets": true,
+    "missing": []
+  },
+  "mohamed-badry/statui\nCommand line tool, not a hosted service or a server to deploy\nReports uptime and response times for a URL in real time\nMonitors several URLs at once": {
+    "repo": "mohamed-badry/statui",
+    "meets": true,
+    "missing": []
+  },
+  "andis382/onemeter\nSelf-hosted application for a shared flat or a small building\nReads a photo of each sub-meter with OCR and records the reading\nSplits each utility bill between people in proportion to their metered consumption\nProduces a statement for each person": {
+    "repo": "andis382/onemeter",
+    "meets": true,
+    "missing": []
+  },
+  "utensils/envisaged\nRenders a git repository's history as an animated visualization or a video": {
+    "repo": "utensils/envisaged",
+    "meets": true,
+    "missing": []
+  },
+  "1a7432/loreweaver\nDiscord bot for tabletop role-playing games\nRolls dice using tabletop RPG dice notation such as 1d20+5": {
+    "repo": "1a7432/loreweaver",
+    "meets": false,
+    "missing": [
+      "Discord bot for tabletop role-playing games"
+    ]
+  },
+  "kdash-rs/kdash\nTerminal user interface for a live Kubernetes cluster\nShows per-pod resource usage such as CPU": {
+    "repo": "kdash-rs/kdash",
+    "meets": true,
+    "missing": []
   }
 }
