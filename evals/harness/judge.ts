@@ -69,6 +69,7 @@ export class ClaudeJudge implements Judge {
         prompt: judgePrompt(repo, mustHaves),
         model: JUDGE_MODEL,
         workspace: workspace.dir,
+        cwd: workspace.dir,
         builtinTools: '',
         tools: MCP_TOOLS,
       });

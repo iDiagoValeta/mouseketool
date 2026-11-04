@@ -28,9 +28,9 @@ export function parseClaudeOutput(stdout: string): string {
 export async function runClaude(
   exec: Exec,
   env: NodeJS.ProcessEnv,
-  options: { prompt: string; model: string; workspace: string; builtinTools: string; tools: string[] },
+  options: { prompt: string; model: string; workspace: string; cwd: string; builtinTools: string; tools: string[] },
 ): Promise<string> {
-  const { prompt, model, workspace, builtinTools, tools } = options;
+  const { prompt, model, workspace, cwd, builtinTools, tools } = options;
   // `--setting-sources project` keeps the author's user hooks, skills and plugins out of the run.
   const args = [
     '-p', prompt,
@@ -41,14 +41,15 @@ export async function runClaude(
     // Without it every run leaves a transcript in the author's ~/.claude/projects.
     '--no-session-persistence',
     '--mcp-config', join(workspace, 'mcp.json'),
-    // `--tools` removes the built-in tools the run does not name; `--allowedTools` alone only pre-approves,
-    // so Read, Glob and Grep would stay live in the workspace that holds the token. `""` means none.
+    // `dontAsk` denies every tool use that `--allowedTools` does not pre-approve, so nothing waits on a prompt.
+    '--permission-mode', 'dontAsk',
+    // `--tools` removes the built-in tools the run does not name: no Bash, no web. `""` means none.
     '--tools', builtinTools,
     '--allowedTools', tools.join(','),
   ];
   // The real HOME is the one extra variable: Claude's OAuth login lives there.
   const { stdout, stderr } = await exec('claude', args, {
-    cwd: workspace,
+    cwd,
     env: { ...baseEnv(env), HOME: env['HOME'] ?? homedir() },
   });
   try {
@@ -67,6 +68,18 @@ export class ClaudeRunner implements Runner {
 
   async run(prompt: string, workspace: string): Promise<{ finalText: string }> {
     const tools = [...MCP_TOOLS, 'Skill'];
-    return { finalText: await runClaude(this.exec, this.env, { prompt, model: this.model, workspace, builtinTools: 'Skill', tools }) };
+    // A real session has file tools, and without them the host answers a small task by misusing the server's
+    // tools on local paths. They are scoped to work/, which `createWorkspace` keeps free of the token.
+    const fileTools = ['Read', 'Glob', 'Grep', 'Edit', 'Write'];
+    return {
+      finalText: await runClaude(this.exec, this.env, {
+        prompt,
+        model: this.model,
+        workspace,
+        cwd: join(workspace, 'work'),
+        builtinTools: ['Skill', ...fileTools].join(','),
+        tools: [...tools, ...fileTools.map((tool) => `${tool}(./**)`)],
+      }),
+    };
   }
 }

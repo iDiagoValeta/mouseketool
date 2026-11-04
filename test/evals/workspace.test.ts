@@ -17,10 +17,12 @@ function run(host: Run['host']): Run {
 }
 
 describe('createWorkspace', () => {
-  it('lays out a Claude workspace with the skill and the MCP config', () => {
+  it('lays out a Claude workspace with the skill in work/ and the MCP config outside it', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     expect(ws.dir).toBe(join(base, 'case-1-positive-vague'));
-    expect(existsSync(join(ws.dir, '.claude/skills/mouseketool/SKILL.md'))).toBe(true);
+    // The host's file tools reach only work/, so the config that holds the token sits beside it.
+    expect(existsSync(join(ws.dir, 'work/.claude/skills/mouseketool/SKILL.md'))).toBe(true);
+    expect(existsSync(join(ws.dir, 'work/mcp.json'))).toBe(false);
     const config = JSON.parse(readFileSync(join(ws.dir, 'mcp.json'), 'utf8'));
     expect(config.mcpServers.mouseketool.args).toEqual([join(process.cwd(), 'dist/server.mjs')]);
     expect(config.mcpServers.mouseketool.env).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
@@ -29,7 +31,7 @@ describe('createWorkspace', () => {
 
   it('leaves the skill out of a Claude workspace when asked, keeping the MCP config', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base, { skill: false });
-    expect(existsSync(join(ws.dir, '.claude'))).toBe(false);
+    expect(existsSync(join(ws.dir, 'work/.claude'))).toBe(false);
     const config = JSON.parse(readFileSync(join(ws.dir, 'mcp.json'), 'utf8'));
     expect(config.mcpServers.mouseketool.env).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
   });

@@ -86,6 +86,7 @@ describe('ClaudeJudge', () => {
       '--strict-mcp-config',
       '--no-session-persistence',
       '--mcp-config', join(options.cwd, 'mcp.json'),
+      '--permission-mode', 'dontAsk',
       // An empty list: no built-in tool at all, so the judge cannot read the workspace.
       '--tools', '',
       '--allowedTools',

@@ -66,7 +66,9 @@ export function createWorkspace(
     };
     writeFileSync(join(dir, 'opencode.json'), JSON.stringify(config, null, 2), { mode: 0o600 });
   } else {
-    if (options.skill) cpSync(skill, join(dir, '.claude', 'skills', 'mouseketool'), { recursive: true });
+    // The host runs in work/ and its file tools reach only that, so the token's config stays one level up.
+    mkdirSync(join(dir, 'work'));
+    if (options.skill) cpSync(skill, join(dir, 'work', '.claude', 'skills', 'mouseketool'), { recursive: true });
     const config = {
       mcpServers: {
         mouseketool: { command: process.execPath, args: [server], env: serverEnv },
