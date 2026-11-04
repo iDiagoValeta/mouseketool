@@ -21,15 +21,15 @@ Write 8 to 15 varied queries: synonyms, the names the community would use, categ
 
 ## 4. Search and shortlist
 
-Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful or only tiny projects (under 50 stars), with queries from a different angle and `stars:>100`. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Keep a handful.
+Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful or only tiny projects (under 50 stars), with queries from a different angle and `stars:>100`. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Judge "off target" by what the project does, not by whether its description repeats the user's words: a mature framework or library for the same domain is on target, because it can be the base. Keep a handful, and always keep the most-starred on-target candidates. When the idea has several parts (for example "convert images" and "generate from an idea"), keep the strongest candidate for each part.
 
 ## 5. Inspect
 
-Call `inspect_repository` on at most 6 candidates. Drop any with `health.archived` or `health.stale`, or whose license blocks the user's stated use. `licenseKind` `none` blocks all use. `copyleft` blocks closed-source use only when the license really does: LGPL and MPL do not block all of it, so drop only after checking what the specific license requires. For `other`, read the license (the `LICENSE` file via `read_repository_file`) and decide. For every capability the verdict depends on, confirm it in the code with `read_repository_file`. A README claim alone is not confirmation.
+Call `inspect_repository` on 3 to 6 candidates (fewer only when fewer survive the shortlist), starting with the most adopted ones. Drop any with `health.archived` or `health.stale`, or whose license blocks the user's stated use. `licenseKind` `none` blocks all use. `copyleft` blocks closed-source use only when the license really does: LGPL and MPL do not block all of it, so drop only after checking what the specific license requires. For `other`, read the license (the `LICENSE` file via `read_repository_file`) and decide. Then read code with `read_repository_file`, at least one source file of each candidate the verdict names or rules out on a capability: confirm each capability the verdict relies on, and confirm each gap that rules a candidate out. This applies to a `build` verdict too, since "nothing covers X" is also a claim. A README claim alone is not confirmation, and an answer that says the code was not read is not finished: read it first.
 
 ## 6. Judge
 
-For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have.
+For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have. When a mature project would be the foundation the new tool sits on (an engine, framework or library that covers part of the idea), the verdict is `base` with that project, not `build`.
 
 ## 7. Answer
 
@@ -40,7 +40,7 @@ The first line of the answer is exactly one of these, nothing before it:
 - `Verdict: base owner/name` : build on top of it as a foundation.
 - `Verdict: build` : nothing fits, build from scratch.
 
-For `reuse`, `adapt` and `base`, list `owner/name` after the word, comma-separated when there are several (`Verdict: adapt foo/bar, baz/qux`). Examples:
+For `reuse`, `adapt` and `base`, list `owner/name` after the word, comma-separated when there are several (`Verdict: adapt foo/bar, baz/qux`). The line holds nothing else: no other words or punctuation, and it stays in English even when the rest of the answer is in the user's language. Examples:
 
 ```
 Verdict: reuse foo/bar
@@ -49,6 +49,6 @@ Verdict: base foo/bar, baz/qux
 Verdict: build
 ```
 
-Then at most three lines of summary: what you found and why that verdict. Then, per candidate, pros and cons against the user's goal.
+Then at most three lines of summary: what you found and why that verdict. Then, per candidate, pros and cons against the user's goal, saying which claims you confirmed in the code. Stop there: do not design the new tool or ask about its design. The user decides what to build with the verdict.
 
 If nothing fits, say so plainly: `Verdict: build`, and why. A forced candidate is a failure. Recommending a poor match to have something to show is worse than saying "build it". You may add "build it, and borrow this piece from owner/name" when that is true.
