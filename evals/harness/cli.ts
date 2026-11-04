@@ -91,7 +91,7 @@ if (plan.length === 0) {
   process.exit(USAGE);
 }
 
-type Result = { run: Run; score: Score; finalText: string; logRepos: string[]; triggered: boolean; error?: string; seconds: number };
+type Result = { run: Run; score: Score; finalText: string; searchedRepos: string[]; inspectedRepos: string[]; triggered: boolean; error?: string; seconds: number };
 const results: Result[] = [];
 
 const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${filtered ? '-partial' : ''}.json`);

@@ -91,20 +91,33 @@ export function removeLiveWorkspaces(): void {
   liveWorkspaces.clear();
 }
 
+export type RunLog = { triggered: boolean; searchedRepos: RepoName[]; inspectedRepos: RepoName[] };
+
 /**
  * `triggered` is true when the server logged at least one line, failed calls included.
  * A line that does not parse still shows the server ran, so it counts as a call without repos.
+ * `searchedRepos` comes from `search_repositories` lines only: those are the repos the server returned, so a
+ * recommendation outside them came from the model's memory. `inspect_repository` logs the repo the model
+ * asked for, which can be a remembered one, so it proves nothing about where the name came from.
  */
-export function readRunLog(workspace: Workspace): { triggered: boolean; logRepos: RepoName[] } {
-  if (!existsSync(workspace.runLog)) return { triggered: false, logRepos: [] };
+export function readRunLog(workspace: Workspace): RunLog {
+  if (!existsSync(workspace.runLog)) return { triggered: false, searchedRepos: [], inspectedRepos: [] };
   const lines = readFileSync(workspace.runLog, 'utf8').split('\n').filter((line) => line.trim() !== '');
-  const repos = lines.flatMap((line): RepoName[] => {
-    try {
-      const entry = JSON.parse(line) as { repos?: unknown };
-      return Array.isArray(entry.repos) ? entry.repos.filter((r): r is RepoName => typeof r === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
-  return { triggered: lines.length > 0, logRepos: [...new Set(repos)] };
+  const reposOf = (tool: string): RepoName[] => {
+    const repos = lines.flatMap((line): RepoName[] => {
+      try {
+        const entry = JSON.parse(line) as { tool?: unknown; repos?: unknown };
+        if (entry.tool !== tool || !Array.isArray(entry.repos)) return [];
+        return entry.repos.filter((r): r is RepoName => typeof r === 'string');
+      } catch {
+        return [];
+      }
+    });
+    return [...new Set(repos)];
+  };
+  return {
+    triggered: lines.length > 0,
+    searchedRepos: reposOf('search_repositories'),
+    inspectedRepos: reposOf('inspect_repository'),
+  };
 }

@@ -4,7 +4,7 @@ import { dirname } from 'node:path';
 import type { RepoName } from '../../src/domain/repo-name.ts';
 import { MCP_TOOLS, runClaude } from './runners/claude-runner.ts';
 import { execCapture, type Exec } from './runners/runner.ts';
-import { createWorkspace, removeWorkspace, WORKSPACE_ROOT } from './workspace.ts';
+import { createWorkspace, readRunLog, removeWorkspace, WORKSPACE_ROOT } from './workspace.ts';
 
 export type Judgment = { repo: RepoName; meets: boolean; missing: string[] };
 
@@ -72,6 +72,10 @@ export class ClaudeJudge implements Judge {
         builtinTools: '',
         tools: MCP_TOOLS,
       });
+      // A verdict given without reading the repo comes from memory, or from a call that failed, and would be cached.
+      if (!readRunLog(workspace).inspectedRepos.includes(repo)) {
+        throw new Error(`The judge did not inspect ${repo}, so its verdict is not grounded`);
+      }
       return parseJudgment(text, repo);
     } finally {
       removeWorkspace(workspace);

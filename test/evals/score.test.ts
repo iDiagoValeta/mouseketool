@@ -1,4 +1,8 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { readRunLog } from '../../evals/harness/workspace.ts';
 import { parseRepoName, type RepoName } from '../../src/domain/repo-name.ts';
 import type { Judge, Judgment } from '../../evals/harness/judge.ts';
 import { HOSTS, type Run } from '../../evals/harness/plan-runs.ts';
@@ -30,9 +34,9 @@ const found = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: t
 const notFound = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: false, missing: ['does b'] });
 
 describe('scoreRun, positive', () => {
-  const outcome = (finalText: string, logRepos: string[], triggered = true) => ({
+  const outcome = (finalText: string, searchedRepos: string[], triggered = true) => ({
     finalText,
-    logRepos: names(...logRepos),
+    searchedRepos: names(...searchedRepos),
     triggered,
   });
 
@@ -60,6 +64,28 @@ describe('scoreRun, positive', () => {
     const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['x/y']), mustHaves, judge);
     expect(score).toEqual({ retrieval: false, verdict: false, judgments: [] });
     expect(calls).toEqual([]);
+  });
+
+  it('does not judge a repo the host only inspected, even though the server logged it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mouseketool-score-test-'));
+    try {
+      const runLog = join(dir, 'run.jsonl');
+      writeFileSync(
+        runLog,
+        '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_repository","repos":["x/y"]}\n',
+      );
+      const { judge, calls } = fakeJudge(['x/y']);
+      const score = await scoreRun(
+        run('positive-defined'),
+        { finalText: 'Verdict: reuse x/y', ...readRunLog({ dir, runLog }) },
+        mustHaves,
+        judge,
+      );
+      expect(score).toEqual({ retrieval: false, verdict: false, judgments: [] });
+      expect(calls).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('is a miss when the recommended repo does not meet the requirements, but retrieval holds', async () => {
@@ -114,7 +140,7 @@ describe('scoreRun, positive', () => {
 });
 
 describe('scoreRun, negative', () => {
-  const outcome = (finalText: string, logRepos: string[] = []) => ({ finalText, logRepos: names(...logRepos), triggered: true });
+  const outcome = (finalText: string, searchedRepos: string[] = []) => ({ finalText, searchedRepos: names(...searchedRepos), triggered: true });
 
   it('passes on build and on base without judging, since nothing is recommended as a cover', async () => {
     const { judge, calls } = fakeJudge(['a/b']);
@@ -166,7 +192,7 @@ describe('scoreRun, trigger', () => {
   it('passes only when the server was never called', async () => {
     const { judge, calls } = fakeJudge([]);
     const score = (triggered: boolean) =>
-      scoreRun(run('trigger'), { finalText: 'done', logRepos: [], triggered }, undefined, judge);
+      scoreRun(run('trigger'), { finalText: 'done', searchedRepos: [], triggered }, undefined, judge);
     expect(await score(false)).toEqual({ verdict: true });
     expect(await score(true)).toEqual({ verdict: false });
     expect(calls).toEqual([]);
@@ -175,7 +201,7 @@ describe('scoreRun, trigger', () => {
 
 describe('scoreRun, host run that errored', () => {
   const error = 'claude run failed: error_max_turns';
-  const perfect = { finalText: 'Verdict: adapt foo/bar', logRepos: names('foo/bar'), triggered: true };
+  const perfect = { finalText: 'Verdict: adapt foo/bar', searchedRepos: names('foo/bar'), triggered: true };
 
   it('scores false on retrieval and hit for a positive run, without calling the judge', async () => {
     const { judge, calls } = fakeJudge(['foo/bar']);
@@ -187,13 +213,13 @@ describe('scoreRun, host run that errored', () => {
 
   it('scores a negative false even if its text says build', async () => {
     const { judge } = fakeJudge([]);
-    const outcome = { finalText: 'Verdict: build', logRepos: [], triggered: true, error };
+    const outcome = { finalText: 'Verdict: build', searchedRepos: [], triggered: true, error };
     expect(await scoreRun(run('negative'), outcome, mustHaves, judge)).toEqual({ verdict: false });
   });
 
   it('scores a trigger false even though the empty log looks like "not triggered"', async () => {
     const { judge } = fakeJudge([]);
-    const outcome = { finalText: '', logRepos: [], triggered: false, error };
+    const outcome = { finalText: '', searchedRepos: [], triggered: false, error };
     expect(await scoreRun(run('trigger'), outcome, undefined, judge)).toEqual({ verdict: false });
   });
 });

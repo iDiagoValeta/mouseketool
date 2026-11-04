@@ -111,26 +111,32 @@ describe('removeLiveWorkspaces', () => {
 describe('readRunLog', () => {
   it('has no calls when the server never ran', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
-    expect(readRunLog(ws)).toEqual({ triggered: false, logRepos: [] });
+    expect(readRunLog(ws)).toEqual({ triggered: false, searchedRepos: [], inspectedRepos: [] });
   });
 
   it('skips a line that does not parse but still counts the run as triggered', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(ws.runLog, '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_rep\n');
-    expect(readRunLog(ws)).toEqual({ triggered: true, logRepos: ['a/b'] });
+    expect(readRunLog(ws)).toEqual({ triggered: true, searchedRepos: ['a/b'], inspectedRepos: [] });
   });
 
-  it('collects repos across calls, including a failed call without repos', () => {
+  it('keeps the repos of search and of inspect apart, since only a search proves a repo did not come from memory', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(
       ws.runLog,
       [
         '{"tool":"search_repositories","repos":["a/b","c/d"]}',
+        '{"tool":"search_repositories","repos":["c/d","e/f"]}',
         '{"tool":"inspect_repository","repos":[]}',
-        '{"tool":"read_repository_file","repos":["a/b"]}',
+        '{"tool":"inspect_repository","repos":["x/y"]}',
+        '{"tool":"read_repository_file","repos":["g/h"]}',
         '',
       ].join('\n'),
     );
-    expect(readRunLog(ws)).toEqual({ triggered: true, logRepos: ['a/b', 'c/d'] });
+    expect(readRunLog(ws)).toEqual({
+      triggered: true,
+      searchedRepos: ['a/b', 'c/d', 'e/f'],
+      inspectedRepos: ['x/y'],
+    });
   });
 });

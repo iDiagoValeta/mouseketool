@@ -52,13 +52,18 @@ describe('parseJudgment', () => {
 });
 
 describe('ClaudeJudge', () => {
-  function recording(stdout: string): { exec: Exec; calls: Parameters<Exec>[]; seen: { skill: boolean; mcp: boolean }[] } {
+  // `log` is what the server would have written to the run log while the judge worked.
+  function recording(
+    stdout: string,
+    log: string[] = ['{"tool":"inspect_repository","repos":["foo/bar"]}'],
+  ): { exec: Exec; calls: Parameters<Exec>[]; seen: { skill: boolean; mcp: boolean }[] } {
     const calls: Parameters<Exec>[] = [];
     const seen: { skill: boolean; mcp: boolean }[] = [];
     const exec: Exec = async (...args) => {
       calls.push(args);
       // The workspace is removed after the call, so what it holds is read while the call runs.
       seen.push({ skill: existsSync(join(args[2].cwd, '.claude')), mcp: existsSync(join(args[2].cwd, 'mcp.json')) });
+      if (log.length > 0) writeFileSync(join(args[2].cwd, 'run.jsonl'), `${log.join('\n')}\n`);
       return { stdout, stderr: '', code: 0 };
     };
     return { exec, calls, seen };
@@ -113,6 +118,17 @@ describe('ClaudeJudge', () => {
   it('throws when the answer has no verdict line, and still removes the workspace', async () => {
     const { exec, calls } = recording(claudeResult('Looks fine.'));
     await expect(make(exec).judge(repo, mustHaves)).rejects.toThrow('verdict');
+    expect(existsSync(calls[0]![2].cwd)).toBe(false);
+  });
+
+  it.each([
+    ['never called the server', []],
+    ['only searched', ['{"tool":"search_repositories","repos":["foo/bar"]}']],
+    ['inspected another repo', ['{"tool":"inspect_repository","repos":["other/repo"]}']],
+    ['had its inspect call fail', ['{"tool":"inspect_repository","repos":[]}']],
+  ])('throws, so nothing is cached, when the judge %s', async (_name, log) => {
+    const { exec, calls } = recording(claudeResult('From memory, it does both.\n{"meets": true, "missing": []}'), log);
+    await expect(make(exec).judge(repo, mustHaves)).rejects.toThrow('did not inspect foo/bar');
     expect(existsSync(calls[0]![2].cwd)).toBe(false);
   });
 

@@ -4,7 +4,7 @@ import { HOSTS, type Host, type Run } from './plan-runs.ts';
 import { parseVerdict } from './verdict.ts';
 
 /** `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass. */
-export type Outcome = { finalText: string; logRepos: RepoName[]; triggered: boolean; error?: string };
+export type Outcome = { finalText: string; searchedRepos: RepoName[]; triggered: boolean; error?: string };
 
 /**
  * `verdict` is the pass/fail of the run (the hit for a positive one). `retrieval` is diagnostic only.
@@ -43,8 +43,9 @@ async function judgeUntilMeets(
 
 /**
  * The server's run log says which repos the search returned, so it holds for any host and catches a model
- * that answers from memory: only recommended repos that came from the search are judged. The verdict line
- * is read from the answer; whether a recommended repo is good is decided by the judge, against the requirements.
+ * that answers from memory: only recommended repos that the search returned are judged, not ones the model
+ * merely inspected. The verdict line is read from the answer; whether a recommended repo is good is decided
+ * by the judge, against the requirements.
  */
 export async function scoreRun(
   run: Run,
@@ -64,7 +65,7 @@ export async function scoreRun(
     throw new Error(`Run "${run.caseId}" (${run.kind}) needs its requirements`);
   }
   const verdict = parseVerdict(outcome.finalText);
-  const recommended = (verdict?.repos ?? []).filter((repo) => outcome.logRepos.includes(repo));
+  const recommended = (verdict?.repos ?? []).filter((repo) => outcome.searchedRepos.includes(repo));
 
   if (run.kind === 'negative') {
     // "Build it, borrow a piece" passes. Reuse and adapt recommend a project for a need nothing should cover,
