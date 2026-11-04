@@ -1,18 +1,57 @@
 import type { RepoName } from '../../src/domain/repo-name.ts';
+import type { Judge, Judgment } from './judge.ts';
 import { HOSTS, type Host, type Run } from './plan-runs.ts';
 import { parseVerdict } from './verdict.ts';
 
 /** `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass. */
 export type Outcome = { finalText: string; logRepos: RepoName[]; triggered: boolean; error?: string };
-export type Score = { retrieval?: boolean; verdict: boolean };
 
 /**
- * Retrieval is read from the server's run log, so it holds for any host and also
- * catches a model that answers from memory. The verdict is read from the answer.
+ * `verdict` is the pass/fail of the run (the hit for a positive one). `retrieval` is diagnostic only.
+ * `judgments` is present when the judge was asked; `caseCovered` marks a negative case that a real project meets.
  */
-export function scoreRun(run: Run, outcome: Outcome, expected?: RepoName[]): Score {
-  const verdict = parseVerdict(outcome.finalText);
+export type Score = {
+  retrieval?: boolean;
+  verdict: boolean;
+  judgments?: Judgment[];
+  judgeError?: string;
+  caseCovered?: boolean;
+};
 
+/** Repos the judge is asked about per run: the answer's first picks, not a whole list of alternatives. */
+const MAX_JUDGED = 3;
+
+/** Judges `repos` in order until one meets every requirement. A failed judge call counts as not meeting. */
+async function judgeUntilMeets(
+  repos: RepoName[],
+  mustHaves: string[],
+  judge: Judge,
+): Promise<{ judgments: Judgment[]; judgeError?: string }> {
+  const judgments: Judgment[] = [];
+  const errors: string[] = [];
+  for (const repo of repos.slice(0, MAX_JUDGED)) {
+    try {
+      const judgment = await judge.judge(repo, mustHaves);
+      judgments.push(judgment);
+      if (judgment.meets) break;
+    } catch (error) {
+      errors.push(`${repo}: ${(error as Error).message}`);
+    }
+  }
+  return { judgments, ...(errors.length === 0 ? {} : { judgeError: errors.join('; ') }) };
+}
+
+/**
+ * The server's run log says which repos the search returned, so it holds for any host and catches a model
+ * that answers from memory: only recommended repos that came from the search are judged. The verdict line
+ * is read from the answer; whether a recommended repo is good is decided by the judge, against the requirements.
+ */
+export async function scoreRun(
+  run: Run,
+  outcome: Outcome,
+  mustHaves: string[] | undefined,
+  judge: Judge,
+): Promise<Score> {
   if (outcome.error !== undefined) {
     return run.kind.startsWith('positive') ? { retrieval: false, verdict: false } : { verdict: false };
   }
@@ -21,26 +60,58 @@ export function scoreRun(run: Run, outcome: Outcome, expected?: RepoName[]): Sco
     return { verdict: !outcome.triggered };
   }
 
+  if (mustHaves === undefined || mustHaves.length === 0) {
+    throw new Error(`Run "${run.caseId}" (${run.kind}) needs its requirements`);
+  }
+  const verdict = parseVerdict(outcome.finalText);
+  const recommended = (verdict?.repos ?? []).filter((repo) => outcome.logRepos.includes(repo));
+
   if (run.kind === 'negative') {
-    // Only reuse and adapt recommend a candidate; "build it, borrow a piece" passes. No verdict line is a miss.
-    return { verdict: verdict !== null && (verdict.decision === 'build' || verdict.decision === 'base') };
+    // "Build it, borrow a piece" passes. Reuse and adapt pass too, unless the recommended project really covers the case.
+    // No verdict line is a miss.
+    if (verdict === null) return { verdict: false };
+    if (verdict.decision === 'build' || verdict.decision === 'base') return { verdict: true };
+    const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
+    const covered = judgments.some((j) => j.meets);
+    return {
+      verdict: true,
+      ...(covered ? { caseCovered: true } : {}),
+      judgments,
+      ...(judgeError === undefined ? {} : { judgeError }),
+    };
   }
 
-  if (!expected || expected.length === 0) {
-    throw new Error(`Positive run "${run.caseId}" needs the expected repositories`);
+  const retrieval = recommended.length > 0;
+  if (!outcome.triggered || verdict === null || verdict.decision === 'build') {
+    return { retrieval, verdict: false };
   }
-  const hit = (repos: RepoName[]) => expected.some((repo) => repos.includes(repo));
+  const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
   return {
-    retrieval: hit(outcome.logRepos),
-    verdict:
-      outcome.triggered && verdict !== null && verdict.decision !== 'build' && hit(verdict.repos),
+    retrieval,
+    verdict: judgments.some((j) => j.meets),
+    judgments,
+    ...(judgeError === undefined ? {} : { judgeError }),
   };
+}
+
+/** One line of flags for the CLI: what the run scored and what the judge said about each repo it looked at. */
+export function describeScore(score: Score): string {
+  return [
+    score.retrieval === undefined ? '' : `retrieval=${score.retrieval ? 'ok' : 'miss'}`,
+    `hit=${score.verdict ? 'ok' : 'miss'}`,
+    score.judgments === undefined
+      ? ''
+      : `judged=[${score.judgments.map((j) => `${j.repo}: ${j.meets ? 'meets' : `missing (${j.missing.join('; ')})`}`).join(', ')}]`,
+    score.judgeError === undefined ? '' : `judgeError=${score.judgeError}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export type PerHostSummary = {
   host: Host;
-  retrievalDefined: number;
-  retrievalVague: number;
+  hitDefined: number;
+  hitVague: number;
   negatives: number;
   triggers: number;
 };
@@ -60,8 +131,8 @@ export function summarize(results: { run: Run; score: Score }[]): PerHostSummary
     return [
       {
         host,
-        retrievalDefined: ratio(passes('positive-defined', (s) => s.retrieval)),
-        retrievalVague: ratio(passes('positive-vague', (s) => s.retrieval)),
+        hitDefined: ratio(passes('positive-defined', (s) => s.verdict)),
+        hitVague: ratio(passes('positive-vague', (s) => s.verdict)),
         negatives: ratio(passes('negative', (s) => s.verdict)),
         triggers: ratio(passes('trigger', (s) => s.verdict)),
       },
@@ -75,7 +146,7 @@ export function meetsThresholds(summaries: PerHostSummary[]): boolean {
     summaries.length > 0 &&
     summaries.every(
       (s) =>
-        s.retrievalDefined >= 0.8 && s.retrievalVague >= 0.6 && s.negatives >= 5 / 6 && s.triggers === 1,
+        s.hitDefined >= 0.8 && s.hitVague >= 0.6 && s.negatives >= 5 / 6 && s.triggers === 1,
     )
   );
 }

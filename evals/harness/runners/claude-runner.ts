@@ -2,12 +2,11 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { baseEnv, execCapture, type Exec, type Runner } from './runner.ts';
 
-const ALLOWED_TOOLS = [
+export const MCP_TOOLS = [
   'mcp__mouseketool__search_repositories',
   'mcp__mouseketool__inspect_repository',
   'mcp__mouseketool__read_repository_file',
-  'Skill',
-].join(',');
+];
 
 export function parseClaudeOutput(stdout: string): string {
   let output: { is_error?: boolean; subtype?: string; result?: unknown };
@@ -22,6 +21,40 @@ export function parseClaudeOutput(stdout: string): string {
   return typeof output.result === 'string' ? output.result : '';
 }
 
+/**
+ * One isolated `claude -p` run in `workspace`: the same flags and environment for the host runs and the judge.
+ * Returns the result text; throws on a failed run.
+ */
+export async function runClaude(
+  exec: Exec,
+  env: NodeJS.ProcessEnv,
+  options: { prompt: string; model: string; workspace: string; tools: string[] },
+): Promise<string> {
+  const { prompt, model, workspace, tools } = options;
+  // `--setting-sources project` keeps the author's user hooks, skills and plugins out of the run.
+  const args = [
+    '-p', prompt,
+    '--model', model,
+    '--output-format', 'json',
+    '--setting-sources', 'project',
+    '--strict-mcp-config',
+    // Without it every run leaves a transcript in the author's ~/.claude/projects.
+    '--no-session-persistence',
+    '--mcp-config', join(workspace, 'mcp.json'),
+    '--allowedTools', tools.join(','),
+  ];
+  // The real HOME is the one extra variable: Claude's OAuth login lives there.
+  const { stdout, stderr } = await exec('claude', args, {
+    cwd: workspace,
+    env: { ...baseEnv(env), HOME: env['HOME'] ?? homedir() },
+  });
+  try {
+    return parseClaudeOutput(stdout);
+  } catch (error) {
+    throw new Error(`${(error as Error).message}${stderr ? ` (stderr: ${stderr.slice(0, 300)})` : ''}`, { cause: error });
+  }
+}
+
 export class ClaudeRunner implements Runner {
   constructor(
     private readonly model: string,
@@ -30,25 +63,7 @@ export class ClaudeRunner implements Runner {
   ) {}
 
   async run(prompt: string, workspace: string): Promise<{ finalText: string }> {
-    // `--setting-sources project` keeps the author's user hooks, skills and plugins out of the run.
-    const args = [
-      '-p', prompt,
-      '--model', this.model,
-      '--output-format', 'json',
-      '--setting-sources', 'project',
-      '--strict-mcp-config',
-      // Without it every run leaves a transcript in the author's ~/.claude/projects.
-      '--no-session-persistence',
-      '--mcp-config', join(workspace, 'mcp.json'),
-      '--allowedTools', ALLOWED_TOOLS,
-    ];
-    // The real HOME is the one extra variable: Claude's OAuth login lives there.
-    const env = { ...baseEnv(this.env), HOME: this.env['HOME'] ?? homedir() };
-    const { stdout, stderr } = await this.exec('claude', args, { cwd: workspace, env });
-    try {
-      return { finalText: parseClaudeOutput(stdout) };
-    } catch (error) {
-      throw new Error(`${(error as Error).message}${stderr ? ` (stderr: ${stderr.slice(0, 300)})` : ''}`, { cause: error });
-    }
+    const tools = [...MCP_TOOLS, 'Skill'];
+    return { finalText: await runClaude(this.exec, this.env, { prompt, model: this.model, workspace, tools }) };
   }
 }

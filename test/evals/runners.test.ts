@@ -100,7 +100,7 @@ function recordingExec(stdout: string): { exec: Exec; calls: Parameters<Exec>[] 
 describe('ClaudeRunner', () => {
   it('hands the host only PATH, TERM, LANG, LC_*, TMPDIR and the real HOME', async () => {
     const { exec, calls } = recordingExec(claudeFixture);
-    await new ClaudeRunner('claude-haiku-5-5', exec, AUTHOR_ENV).run('x', '/ws');
+    await new ClaudeRunner('claude-sonnet-5-5', exec, AUTHOR_ENV).run('x', '/ws');
     expect(calls[0]![2].env).toEqual({
       PATH: '/usr/bin',
       TERM: 'xterm',
@@ -118,7 +118,7 @@ describe('ClaudeRunner', () => {
       return { stdout: claudeFixture, stderr: '', code: 0 };
     };
 
-    const result = await new ClaudeRunner('claude-haiku-5-5', exec).run('an idea', '/ws');
+    const result = await new ClaudeRunner('claude-sonnet-5-5', exec).run('an idea', '/ws');
 
     expect(result.finalText).toBe(parseClaudeOutput(claudeFixture));
     const [file, args, options] = calls[0]!;
@@ -126,7 +126,7 @@ describe('ClaudeRunner', () => {
     expect(args.slice(0, 2)).toEqual(['-p', 'an idea']);
     expect(args).toContain('--strict-mcp-config');
     expect(args).toContain('--no-session-persistence');
-    expect(args[args.indexOf('--model') + 1]).toBe('claude-haiku-5-5');
+    expect(args[args.indexOf('--model') + 1]).toBe('claude-sonnet-5-5');
     expect(args[args.indexOf('--setting-sources') + 1]).toBe('project');
     expect(args[args.indexOf('--mcp-config') + 1]).toBe('/ws/mcp.json');
     expect(args[args.indexOf('--allowedTools') + 1]).toBe(

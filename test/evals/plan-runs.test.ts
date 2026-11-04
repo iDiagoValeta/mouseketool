@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadCases } from '../../evals/cases/schema.ts';
+import { loadCases, renderDefined } from '../../evals/cases/schema.ts';
 import { HOSTS, MODELS, planRuns } from '../../evals/harness/plan-runs.ts';
 
 const cases = loadCases('evals/cases');
@@ -19,20 +19,30 @@ describe('planRuns', () => {
     expect(runs.filter((run) => run.kind === 'trigger')).toHaveLength(6);
   });
 
-  it('gives every host 17 or 18 runs in every pass', () => {
-    for (const pass of [0, 1, 2, 3, 7]) {
-      for (const count of hostCounts(pass)) {
-        expect([17, 18]).toContain(count);
+  it('plans 32 Sonnet and 20 DeepSeek runs in pass 0', () => {
+    expect(HOSTS).toEqual(['claude-sonnet', 'opencode-deepseek-flash']);
+    expect(hostCounts(0)).toEqual([32, 20]);
+  });
+
+  it('gives every host at least one run of every kind in every pass', () => {
+    for (const pass of [0, 1, 2, 3, 4, 7]) {
+      const runs = planRuns(cases, pass);
+      for (const host of HOSTS) {
+        for (const kind of ['positive-vague', 'positive-defined', 'negative', 'trigger']) {
+          expect(runs.filter((r) => r.host === host && r.kind === kind).length, `${host} ${kind} pass ${pass}`).toBeGreaterThan(0);
+        }
       }
     }
   });
 
-  it('assigns run i to HOSTS[(i + pass) % 3], so pass 1 shifts every run by one host', () => {
+  it('sends run i to Sonnet when (i + pass) % 5 < 3 and to DeepSeek otherwise, so each pass shifts every run', () => {
+    const expectedHost = (i: number, pass: number) => ((i + pass) % 5 < 3 ? 'claude-sonnet' : 'opencode-deepseek-flash');
+    for (const pass of [0, 1, 2, 3, 4]) {
+      planRuns(cases, pass).forEach((run, i) => expect(run.host).toBe(expectedHost(i, pass)));
+    }
     const pass0 = planRuns(cases, 0);
     const pass1 = planRuns(cases, 1);
     pass0.forEach((run, i) => {
-      expect(run.host).toBe(HOSTS[i % 3]);
-      expect(pass1[i]!.host).toBe(HOSTS[(i + 1) % 3]);
       expect(pass1[i]!.caseId).toBe(run.caseId);
       expect(pass1[i]!.kind).toBe(run.kind);
     });
@@ -41,17 +51,26 @@ describe('planRuns', () => {
   it('puts each case text in the prompt of its kind', () => {
     const runs = planRuns(cases, 0);
     const first = cases.positive[0]!;
-    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-vague')!.prompt).toBe(first.vague);
-    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-defined')!.prompt).toBe(first.defined);
+    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-vague')!.prompt).toBe(first.vague.text);
+    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-defined')!.prompt).toBe(renderDefined(first.defined));
     const negative = cases.negative[0]!;
-    expect(runs.find((r) => r.caseId === negative.id)!.prompt).toBe(negative.defined);
+    expect(runs.find((r) => r.caseId === negative.id)!.prompt).toBe(renderDefined(negative.defined));
     const trigger = cases.trigger[0]!;
     expect(runs.find((r) => r.caseId === trigger.id)!.prompt).toBe(trigger.prompt);
   });
 
-  it('names the models of the three hosts', () => {
+  it('carries the requirements to score each prompt against', () => {
+    const runs = planRuns(cases, 0);
+    const first = cases.positive[0]!;
+    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-vague')!.mustHaves).toEqual(first.vague.mustHaves);
+    expect(runs.find((r) => r.caseId === first.id && r.kind === 'positive-defined')!.mustHaves).toEqual(first.defined.mustHaves);
+    const negative = cases.negative[0]!;
+    expect(runs.find((r) => r.caseId === negative.id)!.mustHaves).toEqual(negative.defined.mustHaves);
+    expect(runs.find((r) => r.kind === 'trigger')!.mustHaves).toBeUndefined();
+  });
+
+  it('names the models of the two hosts', () => {
     expect(MODELS).toEqual({
-      'claude-haiku': 'claude-haiku-5-5',
       'claude-sonnet': 'claude-sonnet-5-5',
       'opencode-deepseek-flash': 'deepseek/deepseek-flash',
     });

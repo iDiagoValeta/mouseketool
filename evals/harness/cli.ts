@@ -5,11 +5,13 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { loadCases } from '../cases/schema.ts';
 import { ghAuthToken, resolveToken } from '../../src/infrastructure/github/token.ts';
+import { calibrate } from './calibrate.ts';
+import { CachedJudge, ClaudeJudge } from './judge.ts';
 import { HOSTS, MODELS, planRuns, type Host, type Run } from './plan-runs.ts';
 import { ClaudeRunner } from './runners/claude-runner.ts';
 import { OpencodeRunner } from './runners/opencode-runner.ts';
 import type { Runner } from './runners/runner.ts';
-import { meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from './score.ts';
+import { describeScore, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from './score.ts';
 import { createWorkspace, readRunLog, removeWorkspace } from './workspace.ts';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -27,12 +29,14 @@ const { values } = parseArgs({
     pass: { type: 'string' },
     only: { type: 'string' },
     host: { type: 'string' },
+    calibrate: { type: 'boolean' },
   },
 });
 
+const calibrating = values.calibrate === true;
 const pass = Number(values.pass);
-if (!Number.isInteger(pass) || pass < 0) {
-  console.error('Usage: pnpm eval --pass <n> [--only <caseId>] [--host <host>]');
+if (!calibrating && (!Number.isInteger(pass) || pass < 0)) {
+  console.error('Usage: pnpm eval --pass <n> [--only <caseId>] [--host <host>]\n       pnpm eval --calibrate [--only <caseId>]');
   process.exit(USAGE);
 }
 if (values.host !== undefined && !(HOSTS as readonly string[]).includes(values.host)) {
@@ -53,7 +57,23 @@ try {
 const githubToken = await resolveToken(process.env, ghAuthToken);
 
 const cases = loadCases(join(repoRoot, 'evals', 'cases'));
-const expectedByCase = new Map(cases.positive.map((c) => [c.id, c.expected]));
+const reportDir = join(repoRoot, '.dev', 'eval-reports');
+mkdirSync(reportDir, { recursive: true });
+// Judgments are cached on disk, so a repeated calibration or pass does not pay for the same verdict twice.
+const judge = new CachedJudge(new ClaudeJudge(repoRoot, githubToken), join(reportDir, 'judgments.json'));
+
+if (calibrating) {
+  // Checks the judge and the requirements before a real pass: no host runs.
+  const positive = cases.positive.filter((c) => values.only === undefined || c.id === values.only);
+  if (positive.length === 0) {
+    console.error(`No positive case matches --only ${values.only ?? '*'}`);
+    process.exit(USAGE);
+  }
+  const calibrated = await calibrate(positive, judge, console.log);
+  console.log(calibrated ? 'CALIBRATED: every case has a known match that meets both versions' : 'NOT CALIBRATED: fix the cases above before a real pass');
+  process.exit(calibrated ? 0 : 1);
+}
+
 const filtered = values.only !== undefined || values.host !== undefined;
 const plan = planRuns(cases, pass).filter(
   (run) => (values.only === undefined || run.caseId === values.only) && (values.host === undefined || run.host === values.host),
@@ -66,8 +86,6 @@ if (plan.length === 0) {
 type Result = { run: Run; score: Score; finalText: string; logRepos: string[]; triggered: boolean; error?: string; seconds: number };
 const results: Result[] = [];
 
-const reportDir = join(repoRoot, '.dev', 'eval-reports');
-mkdirSync(reportDir, { recursive: true });
 const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${filtered ? '-partial' : ''}.json`);
 
 // Rewritten after every run so a crash keeps what already finished.
@@ -97,24 +115,24 @@ for (const [index, run] of plan.entries()) {
 
   // A failed host run scores false on every measure and is flagged, so it is never read as a verdict.
   const outcome = { finalText, ...log, ...(error === undefined ? {} : { error }) };
-  const score = scoreRun(run, outcome, expectedByCase.get(run.caseId));
+  const score = await scoreRun(run, outcome, run.mustHaves, judge);
   const seconds = Math.round((Date.now() - started) / 1000);
   results.push({ run, score, finalText, ...log, seconds, ...(error === undefined ? {} : { error }) });
   writeReport(false);
 
-  const flags = [
-    score.retrieval === undefined ? '' : `retrieval=${score.retrieval ? 'ok' : 'miss'}`,
-    `verdict=${score.verdict ? 'ok' : 'miss'}`,
-    error === undefined ? '' : `ERROR=${error.slice(0, 120)}`,
-  ].filter(Boolean);
+  const flags = [describeScore(score), error === undefined ? '' : `ERROR=${error.slice(0, 120)}`].filter(Boolean);
   console.log(`[${index + 1}/${plan.length}] ${run.host} ${run.kind} ${run.caseId} ${flags.join(' ')} ${seconds}s`);
+  if (score.caseCovered) {
+    const by = score.judgments?.find((j) => j.meets)?.repo;
+    console.log(`CASE COVERED: ${run.caseId} by ${by}`);
+  }
 }
 
 const { summaries, passed } = writeReport(true);
 for (const s of summaries) {
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   console.log(
-    `${s.host}: retrieval defined ${pct(s.retrievalDefined)}, vague ${pct(s.retrievalVague)}, negatives ${pct(s.negatives)}, triggers ${pct(s.triggers)}`,
+    `${s.host}: hit defined ${pct(s.hitDefined)}, vague ${pct(s.hitVague)}, negatives ${pct(s.negatives)}, triggers ${pct(s.triggers)}`,
   );
 }
 

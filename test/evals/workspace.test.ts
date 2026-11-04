@@ -27,6 +27,13 @@ describe('createWorkspace', () => {
     expect(ws.runLog).toBe(join(ws.dir, 'run.jsonl'));
   });
 
+  it('leaves the skill out of a Claude workspace when asked, keeping the MCP config', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base, { skill: false });
+    expect(existsSync(join(ws.dir, '.claude'))).toBe(false);
+    const config = JSON.parse(readFileSync(join(ws.dir, 'mcp.json'), 'utf8'));
+    expect(config.mcpServers.mouseketool.env).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
+  });
+
   it('lays out an opencode workspace with the skill, an empty home and the MCP config', () => {
     const ws = createWorkspace(run('opencode-deepseek-flash'), process.cwd(), TOKEN, base);
     expect(existsSync(join(ws.dir, '.opencode/skills/mouseketool/SKILL.md'))).toBe(true);
@@ -38,26 +45,26 @@ describe('createWorkspace', () => {
   });
 
   it('replaces a workspace left behind by an earlier run', () => {
-    const first = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const first = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     const stale = join(first.dir, 'stale.txt');
     writeFileSync(stale, 'left behind');
-    const second = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const second = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     expect(existsSync(stale)).toBe(false);
     expect(second.dir).toBe(first.dir);
   });
 
-  it.each(['claude-haiku', 'opencode-deepseek-flash'] as const)(
+  it.each(['claude-sonnet', 'opencode-deepseek-flash'] as const)(
     'is readable only by its owner on %s, since the MCP config holds the token',
     (host) => {
       const ws = createWorkspace(run(host), process.cwd(), TOKEN, base);
       const mode = (path: string) => statSync(path).mode & 0o777;
       expect(mode(ws.dir)).toBe(0o700);
-      expect(mode(join(ws.dir, host === 'claude-haiku' ? 'mcp.json' : 'opencode.json'))).toBe(0o600);
+      expect(mode(join(ws.dir, host === 'claude-sonnet' ? 'mcp.json' : 'opencode.json'))).toBe(0o600);
     },
   );
 
   it('is removed by removeWorkspace', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     removeWorkspace(ws);
     expect(existsSync(ws.dir)).toBe(false);
   });
@@ -65,18 +72,18 @@ describe('createWorkspace', () => {
 
 describe('readRunLog', () => {
   it('has no calls when the server never ran', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     expect(readRunLog(ws)).toEqual({ triggered: false, logRepos: [] });
   });
 
   it('skips a line that does not parse but still counts the run as triggered', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(ws.runLog, '{"tool":"search_repositories","repos":["a/b"]}\n{"tool":"inspect_rep\n');
     expect(readRunLog(ws)).toEqual({ triggered: true, logRepos: ['a/b'] });
   });
 
   it('collects repos across calls, including a failed call without repos', () => {
-    const ws = createWorkspace(run('claude-haiku'), process.cwd(), TOKEN, base);
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     writeFileSync(
       ws.runLog,
       [

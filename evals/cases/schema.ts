@@ -12,19 +12,38 @@ const repoName = z.string().transform((value, ctx): RepoName => {
   }
 });
 
-const positiveCase = z.object({
-  id: z.string().min(1),
-  vague: z.string().min(1),
-  defined: z.string().min(1),
-  expected: z.array(repoName).min(1),
+const requirement = z.string().min(1);
+
+const defined = z.object({
+  mustHaves: z.array(requirement).min(1),
+  niceToHaves: z.array(requirement),
 });
 
-const negativeCase = z.object({ id: z.string().min(1), defined: z.string().min(1) });
+/**
+ * `knownMatches` is not used for scoring, which is by requirements; the leak tests and
+ * calibration use it. `vague.mustHaves` are the requirements the vague sentence clearly implies.
+ */
+const positiveCase = z.object({
+  id: z.string().min(1),
+  vague: z.object({ text: z.string().min(1), mustHaves: z.array(requirement).min(1) }),
+  defined,
+  knownMatches: z.array(repoName).min(1),
+});
+
+const negativeCase = z.object({ id: z.string().min(1), defined });
 const triggerCase = z.object({ id: z.string().min(1), prompt: z.string().min(1) });
 
+export type Defined = z.infer<typeof defined>;
 export type PositiveCase = z.infer<typeof positiveCase>;
 export type NegativeCase = z.infer<typeof negativeCase>;
 export type TriggerCase = z.infer<typeof triggerCase>;
+
+/** The defined prompt as the host reads it: a "Must have:" list and, when there is one, a "Nice to have:" list. */
+export function renderDefined(d: Defined): string {
+  const list = (items: string[]) => items.map((item) => `- ${item}`).join('\n');
+  const nice = d.niceToHaves.length === 0 ? '' : `\nNice to have:\n${list(d.niceToHaves)}`;
+  return `Must have:\n${list(d.mustHaves)}${nice}`;
+}
 
 function readJson(dir: string, file: string): unknown {
   return JSON.parse(readFileSync(join(dir, file), 'utf8'));

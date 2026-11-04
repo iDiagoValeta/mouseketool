@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { parseRepoName } from '../../src/domain/repo-name.ts';
-import { loadCases } from '../../evals/cases/schema.ts';
+import { readFileSync } from 'node:fs';
+import { loadCases, renderDefined } from '../../evals/cases/schema.ts';
 
 const cases = loadCases('evals/cases');
-
-/** Bullet lines under a "Must have:" or "Nice to have:" heading. */
-function requirements(defined: string, heading: 'Must have:' | 'Nice to have:'): string[] {
-  const lines = defined.split('\n').map((line) => line.trim());
-  const start = lines.indexOf(heading);
-  if (start === -1) return [];
-  const items: string[] = [];
-  for (const line of lines.slice(start + 1)) {
-    if (!line.startsWith('- ')) break;
-    items.push(line);
-  }
-  return items;
-}
+// Snapshot of the defined prompts as they were before the requirements became structured data.
+const oldDefined = JSON.parse(readFileSync('test/evals/fixtures/defined-prompts.json', 'utf8')) as Record<string, string>;
 
 describe('loadCases', () => {
   it('returns 20 positive, 6 negative and 6 trigger cases', () => {
@@ -34,21 +24,39 @@ describe('loadCases', () => {
   });
 });
 
+describe('renderDefined', () => {
+  it('renders the Must have and Nice to have blocks', () => {
+    expect(renderDefined({ mustHaves: ['a', 'b'], niceToHaves: ['c'] })).toBe('Must have:\n- a\n- b\nNice to have:\n- c');
+  });
+
+  it('omits the Nice to have block when there is none', () => {
+    expect(renderDefined({ mustHaves: ['a'], niceToHaves: [] })).toBe('Must have:\n- a');
+  });
+
+  it('renders every case exactly as the host got it before the conversion', () => {
+    const all = [...cases.positive, ...cases.negative];
+    expect(all).toHaveLength(Object.keys(oldDefined).length);
+    for (const c of all) {
+      expect(renderDefined(c.defined), c.id).toBe(oldDefined[c.id]);
+    }
+  });
+});
+
 describe('positive cases', () => {
   it.each(cases.positive.map((c) => [c.id, c] as const))('%s is well formed', (_id, c) => {
-    expect(c.expected.length).toBeGreaterThan(0);
-    for (const repo of c.expected) {
+    expect(c.knownMatches.length).toBeGreaterThan(0);
+    for (const repo of c.knownMatches) {
       expect(parseRepoName(repo)).toBe(repo);
     }
-    expect(new Set(c.expected).size).toBe(c.expected.length);
+    expect(new Set(c.knownMatches).size).toBe(c.knownMatches.length);
   });
 
   it.each(cases.positive.map((c) => [c.id, c] as const))(
     '%s vague text is one sentence without the repo name',
     (_id, c) => {
-      expect(c.vague.trim().split(/[.!?]\s+\S/)).toHaveLength(1);
-      const text = c.vague.toLowerCase();
-      for (const repo of c.expected) {
+      expect(c.vague.text.trim().split(/[.!?]\s+\S/)).toHaveLength(1);
+      const text = c.vague.text.toLowerCase();
+      for (const repo of c.knownMatches) {
         const namePart = repo.split('/')[1]!;
         expect(text).not.toContain(namePart);
       }
@@ -58,8 +66,8 @@ describe('positive cases', () => {
   it.each(cases.positive.map((c) => [c.id, c] as const))(
     '%s vague text has no long word from the repo owner or name',
     (_id, c) => {
-      const text = c.vague.toLowerCase();
-      for (const repo of c.expected) {
+      const text = c.vague.text.toLowerCase();
+      for (const repo of c.knownMatches) {
         const words = repo.split(/[-_/]/).filter((word) => word.length >= 5);
         for (const word of words) {
           expect(text).not.toContain(word);
@@ -69,14 +77,32 @@ describe('positive cases', () => {
   );
 
   it.each(cases.positive.map((c) => [c.id, c] as const))(
+    '%s vague text states the intent to build or get a new tool',
+    (_id, c) => {
+      expect(c.vague.text).toMatch(/\b(build|make|write|create|start)\b/i);
+    },
+  );
+
+  it.each(cases.positive.map((c) => [c.id, c] as const))(
+    '%s vague text is in the first person',
+    (_id, c) => {
+      expect(c.vague.text).toMatch(/\bI\b|\bI'/);
+    },
+  );
+
+  it.each(cases.positive.map((c) => [c.id, c] as const))('%s vague has 2 or 3 requirements', (_id, c) => {
+    expect(c.vague.mustHaves.length).toBeGreaterThanOrEqual(2);
+    expect(c.vague.mustHaves.length).toBeLessThanOrEqual(3);
+  });
+
+  it.each(cases.positive.map((c) => [c.id, c] as const))(
     '%s defined text has 4 to 8 requirements in both lists',
     (_id, c) => {
-      const must = requirements(c.defined, 'Must have:');
-      const nice = requirements(c.defined, 'Nice to have:');
-      expect(must.length).toBeGreaterThanOrEqual(2);
-      expect(nice.length).toBeGreaterThanOrEqual(1);
-      expect(must.length + nice.length).toBeGreaterThanOrEqual(4);
-      expect(must.length + nice.length).toBeLessThanOrEqual(8);
+      const { mustHaves, niceToHaves } = c.defined;
+      expect(mustHaves.length).toBeGreaterThanOrEqual(2);
+      expect(niceToHaves.length).toBeGreaterThanOrEqual(1);
+      expect(mustHaves.length + niceToHaves.length).toBeGreaterThanOrEqual(4);
+      expect(mustHaves.length + niceToHaves.length).toBeLessThanOrEqual(8);
     },
   );
 });
@@ -85,8 +111,8 @@ describe('negative cases', () => {
   it.each(cases.negative.map((c) => [c.id, c] as const))(
     '%s defined text has both lists',
     (_id, c) => {
-      expect(requirements(c.defined, 'Must have:').length).toBeGreaterThanOrEqual(2);
-      expect(requirements(c.defined, 'Nice to have:').length).toBeGreaterThanOrEqual(1);
+      expect(c.defined.mustHaves.length).toBeGreaterThanOrEqual(2);
+      expect(c.defined.niceToHaves.length).toBeGreaterThanOrEqual(1);
     },
   );
 });

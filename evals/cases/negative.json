@@ -1,26 +1,93 @@
 [
   {
     "id": "neg-lease-key-dates",
-    "defined": "Must have:\n- Self-hosted web application for a tenant, not a landlord\n- Reads an uploaded lease PDF and extracts the notice, renewal and rent review dates\n- Sends reminders ahead of each notice deadline\n- Publishes the dates as a calendar feed\nNice to have:\n- Lets the user correct extracted dates by hand\n- Keeps a history of rent changes"
+    "defined": {
+      "mustHaves": [
+        "Self-hosted web application for a tenant, not a landlord",
+        "Reads an uploaded lease PDF and extracts the notice, renewal and rent review dates",
+        "Sends reminders ahead of each notice deadline",
+        "Publishes the dates as a calendar feed"
+      ],
+      "niceToHaves": [
+        "Lets the user correct extracted dates by hand",
+        "Keeps a history of rent changes"
+      ]
+    }
   },
   {
     "id": "neg-terminal-runbook",
-    "defined": "Must have:\n- Records a shell session and turns it into a step-by-step runbook in Markdown\n- Replaces hostnames, addresses and secret-looking values with named placeholders automatically\n- Keeps the output of each command next to the command, trimmed to the relevant lines\n- Runs locally with no cloud service\nNice to have:\n- Lets a teammate replay the runbook with their own placeholder values\n- Flags commands that were typed and then undone"
+    "defined": {
+      "mustHaves": [
+        "Records a shell session and turns it into a step-by-step runbook in Markdown",
+        "Replaces hostnames, addresses and secret-looking values with named placeholders automatically",
+        "Keeps the output of each command next to the command, trimmed to the relevant lines",
+        "Runs locally with no cloud service"
+      ],
+      "niceToHaves": [
+        "Lets a teammate replay the runbook with their own placeholder values",
+        "Flags commands that were typed and then undone"
+      ]
+    }
   },
   {
     "id": "neg-practice-tempo-log",
-    "defined": "Must have:\n- Records the user practising an instrument through the microphone\n- Detects the tempo actually played, not the metronome setting\n- Stores one entry per piece and per session\n- Charts the tempo progress of each piece over weeks\nNice to have:\n- Warns when the player speeds up during a passage\n- Exports the log as CSV"
+    "defined": {
+      "mustHaves": [
+        "Records the user practising an instrument through the microphone",
+        "Detects the tempo actually played, not the metronome setting",
+        "Stores one entry per piece and per session",
+        "Charts the tempo progress of each piece over weeks"
+      ],
+      "niceToHaves": [
+        "Warns when the player speeds up during a passage",
+        "Exports the log as CSV"
+      ]
+    }
   },
   {
     "id": "neg-choir-practice-tracker",
-    "defined": "Must have:\n- Self-hosted web application for an amateur choir\n- Imports a score as MusicXML and generates one practice audio file per voice part, with that part louder than the others\n- Each member has an account and is assigned a voice part\n- Logs which pieces each member practised and for how long\n- Shows the choir director, per piece, which members have not practised yet\nNice to have:\n- Adjustable tempo for the practice audio\n- Reminder emails before rehearsals"
+    "defined": {
+      "mustHaves": [
+        "Self-hosted web application for an amateur choir",
+        "Imports a score as MusicXML and generates one practice audio file per voice part, with that part louder than the others",
+        "Each member has an account and is assigned a voice part",
+        "Logs which pieces each member practised and for how long",
+        "Shows the choir director, per piece, which members have not practised yet"
+      ],
+      "niceToHaves": [
+        "Adjustable tempo for the practice audio",
+        "Reminder emails before rehearsals"
+      ]
+    }
   },
   {
     "id": "neg-sub-meter-bill-split",
-    "defined": "Must have:\n- Self-hosted application for a shared flat or a small building\n- Reads a photo of each sub-meter with OCR and records the reading\n- Splits each utility bill between people in proportion to their metered consumption\n- Produces a statement for each person\nNice to have:\n- Flags a reading that is lower than the previous one\n- Sends the statement by email"
+    "defined": {
+      "mustHaves": [
+        "Self-hosted application for a shared flat or a small building",
+        "Reads a photo of each sub-meter with OCR and records the reading",
+        "Splits each utility bill between people in proportion to their metered consumption",
+        "Produces a statement for each person"
+      ],
+      "niceToHaves": [
+        "Flags a reading that is lower than the previous one",
+        "Sends the statement by email"
+      ]
+    }
   },
   {
     "id": "neg-notes-open-actions",
-    "defined": "Must have:\n- Command line tool that scans a folder of Markdown meeting notes\n- Collects action items assigned to each person across all files\n- Marks an action item as done when a later note says it was completed\n- Prints a list of the items still open per person\nNice to have:\n- Shows how long each item has been open\n- Output as Markdown or JSON"
+    "defined": {
+      "mustHaves": [
+        "Command line tool that scans a folder of Markdown meeting notes",
+        "Collects action items assigned to each person across all files",
+        "Marks an action item as done when a later note says it was completed",
+        "Prints a list of the items still open per person"
+      ],
+      "niceToHaves": [
+        "Shows how long each item has been open",
+        "Output as Markdown or JSON"
+      ]
+    }
   }
 ]

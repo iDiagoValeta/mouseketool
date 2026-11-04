@@ -1,117 +1,228 @@
 import { describe, expect, it } from 'vitest';
-import type { Run } from '../../evals/harness/plan-runs.ts';
-import { meetsThresholds, scoreRun, summarize, type PerHostSummary } from '../../evals/harness/score.ts';
-import { HOSTS } from '../../evals/harness/plan-runs.ts';
+import { parseRepoName, type RepoName } from '../../src/domain/repo-name.ts';
+import type { Judge, Judgment } from '../../evals/harness/judge.ts';
+import { HOSTS, type Run } from '../../evals/harness/plan-runs.ts';
+import { describeScore, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from '../../evals/harness/score.ts';
 
-function run(kind: Run['kind'], host: Run['host'] = 'claude-haiku'): Run {
+function run(kind: Run['kind'], host: Run['host'] = 'claude-sonnet'): Run {
   return { caseId: 'c', kind, prompt: 'p', host };
 }
 
-const expected = ['foo/bar'];
+const mustHaves = ['does a', 'does b'];
+const names = (...repos: string[]) => repos.map((r) => parseRepoName(r));
+
+/** A judge that meets the requirements for the listed repos, fails the `broken` ones and rejects the rest. */
+function fakeJudge(meeting: string[], broken: string[] = []): { judge: Judge; calls: RepoName[] } {
+  const calls: RepoName[] = [];
+  const judge: Judge = {
+    async judge(repo, items) {
+      calls.push(repo);
+      expect(items).toEqual(mustHaves);
+      if (broken.includes(repo)) throw new Error(`no verdict for ${repo}`);
+      const meets = meeting.includes(repo);
+      return { repo, meets, missing: meets ? [] : ['does b'] };
+    },
+  };
+  return { judge, calls };
+}
+
+const found = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: true, missing: [] });
+const notFound = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: false, missing: ['does b'] });
 
 describe('scoreRun, positive', () => {
-  it('scores retrieval when any expected repo is in the log', () => {
-    const outcome = { finalText: 'Verdict: build', logRepos: ['x/y', 'foo/bar'], triggered: true };
-    expect(scoreRun(run('positive-defined'), outcome, expected).retrieval).toBe(true);
+  const outcome = (finalText: string, logRepos: string[], triggered = true) => ({
+    finalText,
+    logRepos: names(...logRepos),
+    triggered,
   });
 
-  it('fails retrieval when no expected repo is in the log', () => {
-    const outcome = { finalText: 'Verdict: adapt foo/bar', logRepos: ['x/y'], triggered: true };
-    expect(scoreRun(run('positive-vague'), outcome, expected)).toEqual({ retrieval: false, verdict: true });
+  it('is a hit when a recommended repo from the search meets the requirements', async () => {
+    const { judge } = fakeJudge(['foo/bar']);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar']), mustHaves, judge);
+    expect(score).toEqual({ retrieval: true, verdict: true, judgments: [found('foo/bar')] });
   });
 
-  it.each(['reuse', 'adapt', 'base'])('passes the verdict on %s of an expected repo', (decision) => {
-    const outcome = { finalText: `Verdict: ${decision} baz/qux, foo/bar`, logRepos: ['foo/bar'], triggered: true };
-    expect(scoreRun(run('positive-defined'), outcome, expected)).toEqual({ retrieval: true, verdict: true });
+  it('accepts a repo nobody listed beforehand: only the requirements decide', async () => {
+    const { judge } = fakeJudge(['other/tool']);
+    const score = await scoreRun(run('positive-vague'), outcome('Verdict: reuse other/tool', ['other/tool', 'x/y']), mustHaves, judge);
+    expect(score.verdict).toBe(true);
   });
 
-  it('fails the verdict on build, on another repo, on no verdict or when not triggered', () => {
-    const base = { logRepos: ['foo/bar'], triggered: true };
-    const score = (finalText: string, triggered = true) =>
-      scoreRun(run('positive-defined'), { ...base, finalText, triggered }, expected).verdict;
-    expect(score('Verdict: build')).toBe(false);
-    expect(score('Verdict: adapt baz/qux')).toBe(false);
-    expect(score('no verdict here')).toBe(false);
-    expect(score('Verdict: adapt foo/bar', false)).toBe(false);
+  it.each(['reuse', 'adapt', 'base'])('judges the repos of a %s verdict', async (decision) => {
+    const { judge, calls } = fakeJudge(['foo/bar']);
+    const score = await scoreRun(run('positive-defined'), outcome(`Verdict: ${decision} foo/bar`, ['foo/bar']), mustHaves, judge);
+    expect(score.verdict).toBe(true);
+    expect(calls).toEqual(['foo/bar']);
   });
 
-  it('needs the expected repos', () => {
-    const outcome = { finalText: 'Verdict: build', logRepos: [], triggered: true };
-    expect(() => scoreRun(run('positive-defined'), outcome)).toThrow();
+  it('ignores recommended repos that the search never returned, as they came from memory', async () => {
+    const { judge, calls } = fakeJudge(['foo/bar']);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['x/y']), mustHaves, judge);
+    expect(score).toEqual({ retrieval: false, verdict: false, judgments: [] });
+    expect(calls).toEqual([]);
+  });
+
+  it('is a miss when the recommended repo does not meet the requirements, but retrieval holds', async () => {
+    const { judge } = fakeJudge([]);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar']), mustHaves, judge);
+    expect(score).toEqual({ retrieval: true, verdict: false, judgments: [notFound('foo/bar')] });
+  });
+
+  it('judges at most the first 3 recommended repos and stops at the first that meets', async () => {
+    const all = ['a/a', 'b/b', 'c/c', 'd/d'];
+    const first = fakeJudge(['d/d']);
+    const miss = await scoreRun(run('positive-defined'), outcome(`Verdict: adapt ${all.join(', ')}`, all), mustHaves, first.judge);
+    expect(first.calls).toEqual(['a/a', 'b/b', 'c/c']);
+    expect(miss.verdict).toBe(false);
+
+    const second = fakeJudge(['b/b', 'c/c']);
+    const hit = await scoreRun(run('positive-defined'), outcome(`Verdict: adapt ${all.join(', ')}`, all), mustHaves, second.judge);
+    expect(second.calls).toEqual(['a/a', 'b/b']);
+    expect(hit.judgments).toEqual([notFound('a/a'), found('b/b')]);
+    expect(hit.verdict).toBe(true);
+  });
+
+  it('records a judge error, counts that repo as not meeting and moves on to the next', async () => {
+    const { judge } = fakeJudge(['b/b'], ['a/a']);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt a/a, b/b', ['a/a', 'b/b']), mustHaves, judge);
+    expect(score.verdict).toBe(true);
+    expect(score.judgments).toEqual([found('b/b')]);
+    expect(score.judgeError).toContain('a/a');
+    expect(score.judgeError).toContain('no verdict for a/a');
+  });
+
+  it('is a miss when the only judge call failed', async () => {
+    const { judge } = fakeJudge([], ['foo/bar']);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar']), mustHaves, judge);
+    expect(score).toMatchObject({ retrieval: true, verdict: false, judgments: [] });
+    expect(score.judgeError).toContain('foo/bar');
+  });
+
+  it('does not judge, and misses, on build, on no verdict or when the server was never called', async () => {
+    const { judge, calls } = fakeJudge(['foo/bar']);
+    const verdict = async (o: ReturnType<typeof outcome>) => (await scoreRun(run('positive-defined'), o, mustHaves, judge)).verdict;
+    expect(await verdict(outcome('Verdict: build', ['foo/bar']))).toBe(false);
+    expect(await verdict(outcome('no verdict here', ['foo/bar']))).toBe(false);
+    expect(await verdict(outcome('Verdict: adapt foo/bar', ['foo/bar'], false))).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it('needs the requirements', async () => {
+    const { judge } = fakeJudge([]);
+    await expect(scoreRun(run('positive-defined'), outcome('Verdict: build', []), undefined, judge)).rejects.toThrow();
   });
 });
 
 describe('scoreRun, negative', () => {
-  const score = (finalText: string) =>
-    scoreRun(run('negative'), { finalText, logRepos: [], triggered: true });
+  const outcome = (finalText: string, logRepos: string[] = []) => ({ finalText, logRepos: names(...logRepos), triggered: true });
 
-  it('passes on build and on base, which borrows a piece', () => {
-    expect(score('Verdict: build')).toEqual({ verdict: true });
-    expect(score('Verdict: base a/b')).toEqual({ verdict: true });
+  it('passes on build and on base without judging, since nothing is recommended as a cover', async () => {
+    const { judge, calls } = fakeJudge(['a/b']);
+    expect(await scoreRun(run('negative'), outcome('Verdict: build'), mustHaves, judge)).toEqual({ verdict: true });
+    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['a/b']), mustHaves, judge)).toEqual({ verdict: true });
+    expect(calls).toEqual([]);
   });
 
-  it('fails on reuse and adapt', () => {
-    expect(score('Verdict: reuse a/b').verdict).toBe(false);
-    expect(score('Verdict: adapt a/b').verdict).toBe(false);
+  it('passes on reuse or adapt of a repo that does not meet the requirements', async () => {
+    const { judge } = fakeJudge([]);
+    const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b']), mustHaves, judge);
+    expect(score).toEqual({ verdict: true, judgments: [notFound('a/b')] });
   });
 
-  it('is a miss when there is no verdict line, since that is not a build it recommendation', () => {
-    expect(score('Sounds great, let us design it.').verdict).toBe(false);
+  it('flags the case as covered when a recommended repo meets every requirement', async () => {
+    const { judge } = fakeJudge(['a/b']);
+    const score = await scoreRun(run('negative'), outcome('Verdict: reuse a/b', ['a/b']), mustHaves, judge);
+    expect(score).toEqual({ verdict: true, caseCovered: true, judgments: [found('a/b')] });
+  });
+
+  it('only judges repos the search returned, up to 3', async () => {
+    const { judge, calls } = fakeJudge([]);
+    await scoreRun(run('negative'), outcome('Verdict: adapt m/m, a/a, b/b, c/c, d/d', ['a/a', 'b/b', 'c/c', 'd/d']), mustHaves, judge);
+    expect(calls).toEqual(['a/a', 'b/b', 'c/c']);
+  });
+
+  it('treats a judge error as not covered and records it', async () => {
+    const { judge } = fakeJudge([], ['a/b']);
+    const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b']), mustHaves, judge);
+    expect(score.verdict).toBe(true);
+    expect(score.caseCovered).toBeUndefined();
+    expect(score.judgeError).toContain('a/b');
+  });
+
+  it('is a miss when there is no verdict line, since that is not a build it recommendation', async () => {
+    const { judge } = fakeJudge([]);
+    expect((await scoreRun(run('negative'), outcome('Sounds great, let us design it.'), mustHaves, judge)).verdict).toBe(false);
   });
 });
 
 describe('scoreRun, trigger', () => {
-  it('passes only when the server was never called', () => {
+  it('passes only when the server was never called', async () => {
+    const { judge, calls } = fakeJudge([]);
     const score = (triggered: boolean) =>
-      scoreRun(run('trigger'), { finalText: 'done', logRepos: [], triggered });
-    expect(score(false)).toEqual({ verdict: true });
-    expect(score(true)).toEqual({ verdict: false });
+      scoreRun(run('trigger'), { finalText: 'done', logRepos: [], triggered }, undefined, judge);
+    expect(await score(false)).toEqual({ verdict: true });
+    expect(await score(true)).toEqual({ verdict: false });
+    expect(calls).toEqual([]);
   });
 });
 
 describe('scoreRun, host run that errored', () => {
   const error = 'claude run failed: error_max_turns';
-  const perfect = { finalText: 'Verdict: adapt foo/bar', logRepos: ['foo/bar'], triggered: true };
+  const perfect = { finalText: 'Verdict: adapt foo/bar', logRepos: names('foo/bar'), triggered: true };
 
-  it('scores false on retrieval and verdict for a positive run, whatever the leftovers say', () => {
-    expect(scoreRun(run('positive-defined'), { ...perfect, error }, expected)).toEqual({
-      retrieval: false,
-      verdict: false,
-    });
-    expect(scoreRun(run('positive-vague'), { ...perfect, error }, expected)).toEqual({
-      retrieval: false,
-      verdict: false,
-    });
+  it('scores false on retrieval and hit for a positive run, without calling the judge', async () => {
+    const { judge, calls } = fakeJudge(['foo/bar']);
+    for (const kind of ['positive-defined', 'positive-vague'] as const) {
+      expect(await scoreRun(run(kind), { ...perfect, error }, mustHaves, judge)).toEqual({ retrieval: false, verdict: false });
+    }
+    expect(calls).toEqual([]);
   });
 
-  it('scores a negative false even if its text says build', () => {
+  it('scores a negative false even if its text says build', async () => {
+    const { judge } = fakeJudge([]);
     const outcome = { finalText: 'Verdict: build', logRepos: [], triggered: true, error };
-    expect(scoreRun(run('negative'), outcome)).toEqual({ verdict: false });
+    expect(await scoreRun(run('negative'), outcome, mustHaves, judge)).toEqual({ verdict: false });
   });
 
-  it('scores a trigger false even though the empty log looks like "not triggered"', () => {
+  it('scores a trigger false even though the empty log looks like "not triggered"', async () => {
+    const { judge } = fakeJudge([]);
     const outcome = { finalText: '', logRepos: [], triggered: false, error };
-    expect(scoreRun(run('trigger'), outcome)).toEqual({ verdict: false });
+    expect(await scoreRun(run('trigger'), outcome, undefined, judge)).toEqual({ verdict: false });
+  });
+});
+
+describe('describeScore', () => {
+  it('prints the hit and retrieval of a run without a judge', () => {
+    expect(describeScore({ retrieval: false, verdict: false })).toBe('retrieval=miss hit=miss');
+    expect(describeScore({ verdict: true })).toBe('hit=ok');
+  });
+
+  it('prints every judged repo with whether it meets or what it misses', () => {
+    const score: Score = { retrieval: true, verdict: true, judgments: [notFound('a/a'), found('b/b')] };
+    expect(describeScore(score)).toBe('retrieval=ok hit=ok judged=[a/a: missing (does b), b/b: meets]');
+  });
+
+  it('prints a judge error', () => {
+    expect(describeScore({ verdict: false, judgments: [], judgeError: 'a/a: no verdict' })).toBe(
+      'hit=miss judged=[] judgeError=a/a: no verdict',
+    );
   });
 });
 
 describe('summarize', () => {
-  const result = (kind: Run['kind'], host: Run['host'], score: { retrieval?: boolean; verdict: boolean }) => ({
-    run: run(kind, host),
-    score,
-  });
+  const result = (kind: Run['kind'], host: Run['host'], score: Score) => ({ run: run(kind, host), score });
 
-  it('reports ratios per host over its own share', () => {
+  it('reports ratios per host over its own share, with the hit read from the verdict', () => {
     const summaries = summarize([
-      result('positive-defined', 'claude-haiku', { retrieval: true, verdict: true }),
-      result('positive-defined', 'claude-haiku', { retrieval: false, verdict: false }),
-      result('positive-vague', 'claude-haiku', { retrieval: true, verdict: false }),
-      result('negative', 'claude-sonnet', { verdict: true }),
-      result('trigger', 'claude-sonnet', { verdict: false }),
+      result('positive-defined', 'claude-sonnet', { retrieval: true, verdict: true }),
+      result('positive-defined', 'claude-sonnet', { retrieval: true, verdict: false }),
+      result('positive-vague', 'claude-sonnet', { retrieval: false, verdict: true }),
+      result('negative', 'opencode-deepseek-flash', { verdict: true }),
+      result('trigger', 'opencode-deepseek-flash', { verdict: false }),
     ]);
     expect(summaries).toEqual([
-      { host: 'claude-haiku', retrievalDefined: 0.5, retrievalVague: 1, negatives: 1, triggers: 1 },
-      { host: 'claude-sonnet', retrievalDefined: 1, retrievalVague: 1, negatives: 1, triggers: 0 },
+      { host: 'claude-sonnet', hitDefined: 0.5, hitVague: 1, negatives: 1, triggers: 1 },
+      { host: 'opencode-deepseek-flash', hitDefined: 1, hitVague: 1, negatives: 1, triggers: 0 },
     ]);
   });
 
@@ -122,22 +233,21 @@ describe('summarize', () => {
 
 describe('meetsThresholds', () => {
   const good: PerHostSummary = {
-    host: 'claude-haiku',
-    retrievalDefined: 0.8,
-    retrievalVague: 0.6,
+    host: 'claude-sonnet',
+    hitDefined: 0.8,
+    hitVague: 0.6,
     negatives: 5 / 6,
     triggers: 1,
   };
-  const all = (override: Partial<PerHostSummary>) =>
-    HOSTS.map((host) => ({ ...good, host, ...override }));
+  const all = (override: Partial<PerHostSummary>) => HOSTS.map((host) => ({ ...good, host, ...override }));
 
   it('passes exactly at every boundary', () => {
     expect(meetsThresholds(all({}))).toBe(true);
   });
 
   it.each([
-    ['retrievalDefined', 0.79],
-    ['retrievalVague', 0.59],
+    ['hitDefined', 0.79],
+    ['hitVague', 0.59],
     ['negatives', 0.83],
     ['triggers', 0.99],
   ] as const)('fails just under the %s boundary', (field, value) => {
@@ -146,7 +256,7 @@ describe('meetsThresholds', () => {
 
   it('fails when a single host misses', () => {
     const summaries = all({});
-    summaries[2] = { ...summaries[2]!, triggers: 0.5 };
+    summaries[1] = { ...summaries[1]!, triggers: 0.5 };
     expect(meetsThresholds(summaries)).toBe(false);
   });
 

@@ -9,7 +9,7 @@ export type Workspace = { dir: string; runLog: string };
 export const WORKSPACE_ROOT = join(tmpdir(), 'mouseketool-eval');
 
 /**
- * A fresh directory holding the skill and the host's MCP config, and nothing else:
+ * A fresh directory holding the skill (unless `options.skill` is false) and the host's MCP config, and nothing else:
  * the host must find the mouseketool skill and the server, not the author's own setup.
  * The token reaches the server only through its MCP config, never through the host's environment.
  * `node` is `process.execPath` so the server does not depend on the PATH the host hands to its children.
@@ -19,6 +19,8 @@ export function createWorkspace(
   repoRoot: string,
   githubToken: string,
   base: string = WORKSPACE_ROOT,
+  // The judge gets the MCP server but must not be able to load the skill.
+  options: { skill: boolean } = { skill: true },
 ): Workspace {
   const dir = join(base, `${run.caseId}-${run.kind}`);
   rmSync(dir, { recursive: true, force: true });
@@ -31,7 +33,7 @@ export function createWorkspace(
   const skill = join(repoRoot, 'skills', 'mouseketool');
 
   if (run.host === 'opencode-deepseek-flash') {
-    cpSync(skill, join(dir, '.opencode', 'skills', 'mouseketool'), { recursive: true });
+    if (options.skill) cpSync(skill, join(dir, '.opencode', 'skills', 'mouseketool'), { recursive: true });
     // HOME points here so the global skill directories of the author are not read.
     mkdirSync(join(dir, 'home'));
     const config = {
@@ -46,7 +48,7 @@ export function createWorkspace(
     };
     writeFileSync(join(dir, 'opencode.json'), JSON.stringify(config, null, 2), { mode: 0o600 });
   } else {
-    cpSync(skill, join(dir, '.claude', 'skills', 'mouseketool'), { recursive: true });
+    if (options.skill) cpSync(skill, join(dir, '.claude', 'skills', 'mouseketool'), { recursive: true });
     const config = {
       mcpServers: {
         mouseketool: { command: process.execPath, args: [server], env: serverEnv },
