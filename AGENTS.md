@@ -37,7 +37,7 @@ Trunk-based branching:
 - Commits and PR titles follow Conventional Commits (`feat:`, `fix:`, `chore:`, ...). Commit bodies explain why.
 - Everything in git is in English.
 
-A ruleset protecting `main` is documented here but not enforced yet: GitHub does not enforce rulesets on private repositories of a free personal account. When the repository goes public, enable it with: pull requests required, the `check` CI job required to pass, and no force pushes or deletions on `main`.
+The `tbd-protection` ruleset protects `main`: changes arrive only through a squash-merged pull request whose `check` CI job passed, history stays linear, and force pushes and deletion are blocked. Release PRs opened by release-please are created by GitHub Actions, so GitHub holds their CI run until it is approved (`gh api -X POST repos/iDiagoValeta/mouseketool/actions/runs/<id>/approve`).
 
 ## Releases
 
