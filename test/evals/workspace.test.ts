@@ -39,9 +39,22 @@ describe('createWorkspace', () => {
     expect(existsSync(join(ws.dir, '.opencode/skills/mouseketool/SKILL.md'))).toBe(true);
     expect(existsSync(join(ws.dir, 'home'))).toBe(true);
     const config = JSON.parse(readFileSync(join(ws.dir, 'opencode.json'), 'utf8'));
-    expect(config.mcp.mouseketool.type).toBe('local');
-    expect(config.mcp.mouseketool.command[1]).toBe(join(process.cwd(), 'dist/server.mjs'));
-    expect(config.mcp.mouseketool.environment).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
+    expect(config.mcp.servers.mouseketool.type).toBe('local');
+    expect(config.mcp.servers.mouseketool.command[1]).toBe(join(process.cwd(), 'dist/server.mjs'));
+    expect(config.mcp.servers.mouseketool.environment).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, GITHUB_TOKEN: TOKEN });
+  });
+
+  it('denies every opencode tool except the skill and the mouseketool tools, and drops Code Mode', () => {
+    const ws = createWorkspace(run('opencode-deepseek-flash'), process.cwd(), TOKEN, base);
+    const config = JSON.parse(readFileSync(join(ws.dir, 'opencode.json'), 'utf8'));
+    // Last match wins: the deny-all rule comes first and the two allows after it.
+    expect(config.permissions).toEqual([
+      { action: '*', resource: '*', effect: 'deny' },
+      { action: 'skill', resource: '*', effect: 'allow' },
+      { action: 'mouseketool_*', resource: '*', effect: 'allow' },
+    ]);
+    // Without it the server's tools sit behind the `execute` tool, which the deny-all rule would also remove.
+    expect(config.mcp.servers.mouseketool.codemode).toBe(false);
   });
 
   it('replaces a workspace left behind by an earlier run', () => {

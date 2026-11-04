@@ -36,15 +36,31 @@ export function createWorkspace(
     if (options.skill) cpSync(skill, join(dir, '.opencode', 'skills', 'mouseketool'), { recursive: true });
     // HOME points here so the global skill directories of the author are not read.
     mkdirSync(join(dir, 'home'));
+    // The host reads untrusted READMEs and code, and this directory holds the token, so it gets no built-in tool.
+    // Keys are those of opencode v2 (checked with `opencode debug agents`, which prints the resolved rules):
+    // - `permissions` is an ordered list and the last matching rule wins, so deny-all comes first. It also
+    //   denies `question`, which a headless run could not answer.
+    // - `skill` stays allowed so the skill loads; `mouseketool_*` is the `<server>_<tool>` name of the MCP tools.
+    // - `codemode: false` exposes the server's tools natively. By default they sit behind the `execute` tool,
+    //   which deny-all would remove along with them, and allowing it would add a JavaScript runtime with `fetch`.
+    // Docs: opencode.ai/docs/permissions, /docs/mcp-servers and the V1 to V2 migration guide.
     const config = {
       $schema: 'https://opencode.ai/config.json',
       mcp: {
-        mouseketool: {
-          type: 'local',
-          command: [process.execPath, server],
-          environment: serverEnv,
+        servers: {
+          mouseketool: {
+            type: 'local',
+            command: [process.execPath, server],
+            environment: serverEnv,
+            codemode: false,
+          },
         },
       },
+      permissions: [
+        { action: '*', resource: '*', effect: 'deny' },
+        { action: 'skill', resource: '*', effect: 'allow' },
+        { action: 'mouseketool_*', resource: '*', effect: 'allow' },
+      ],
     };
     writeFileSync(join(dir, 'opencode.json'), JSON.stringify(config, null, 2), { mode: 0o600 });
   } else {

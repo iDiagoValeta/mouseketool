@@ -44,7 +44,8 @@ export class OpencodeRunner implements Runner {
 
   async run(prompt: string, workspace: string): Promise<{ finalText: string }> {
     // `--standalone` avoids the author's background `opencode serve`, which has the global config loaded.
-    const args = ['run', '--standalone', '--format', 'json', '-m', MODELS['opencode-deepseek-flash'], '--auto', prompt];
+    const args = ['run', '--standalone', '--format', 'json', '-m', MODELS['opencode-deepseek-flash'], prompt];
+    // No `--auto`: the workspace config denies every tool but the skill and the server's, so nothing is left to approve.
     // HOME and the XDG dirs are the empty workspace home, so no global skill or plugin loads.
     // The data dir stays real because the DeepSeek key lives in opencode's auth store there.
     const home = join(workspace, 'home');

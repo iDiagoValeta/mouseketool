@@ -167,7 +167,7 @@ describe('OpencodeRunner', () => {
     const [file, args, options] = calls[0]!;
     expect(file).toBe('opencode');
     expect(args).toEqual([
-      'run', '--standalone', '--format', 'json', '-m', 'deepseek/deepseek-flash', '--auto', 'an idea',
+      'run', '--standalone', '--format', 'json', '-m', 'deepseek/deepseek-flash', 'an idea',
     ]);
     expect(options.cwd).toBe('/ws');
     expect(options.env['HOME']).toBe('/ws/home');
