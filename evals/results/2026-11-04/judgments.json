@@ -1,0 +1,274 @@
+{
+  "dotenv-linter/dotenv-linter\nCommand line tool that checks environment variable files for problems\nDetects duplicated keys\nDetects style problems such as spaces around the equals sign or lowercase key names\nExits with a non-zero status when it finds problems, so CI can fail on it": {
+    "repo": "dotenv-linter/dotenv-linter",
+    "meets": true,
+    "missing": []
+  },
+  "dotenv-linter/dotenv-linter\nChecks environment variable files for problems\nDetects duplicated keys\nDetects style and formatting problems": {
+    "repo": "dotenv-linter/dotenv-linter",
+    "meets": true,
+    "missing": []
+  },
+  "wemake-services/dotenv-linter\nCommand line tool that checks environment variable files for problems\nDetects duplicated keys\nDetects style problems such as spaces around the equals sign or lowercase key names\nExits with a non-zero status when it finds problems, so CI can fail on it": {
+    "repo": "wemake-services/dotenv-linter",
+    "meets": true,
+    "missing": []
+  },
+  "wemake-services/dotenv-linter\nChecks environment variable files for problems\nDetects duplicated keys\nDetects style and formatting problems": {
+    "repo": "wemake-services/dotenv-linter",
+    "meets": true,
+    "missing": []
+  },
+  "tbillington/kondo\nScans a directory tree and finds software projects in it\nRecognises several ecosystems (Node, Rust, Python, Java and others), not just one\nRemoves only regenerable artifacts such as dependencies and build output, never source code\nAsks for confirmation before deleting anything": {
+    "repo": "tbillington/kondo",
+    "meets": true,
+    "missing": []
+  },
+  "tbillington/kondo\nScans a directory tree and finds software projects in it\nRecognises several ecosystems, not just one\nRemoves regenerable artifacts such as dependencies and build output": {
+    "repo": "tbillington/kondo",
+    "meets": true,
+    "missing": []
+  },
+  "mbrt/gmailctl\nGmail filters are described in a declarative configuration file\nShows a diff of the changes before they are applied\nApplies the filters to the Gmail account through its API, with no manual import step\nReduces long filter queries so they stay under Gmail's size limit": {
+    "repo": "mbrt/gmailctl",
+    "meets": true,
+    "missing": []
+  },
+  "mbrt/gmailctl\nMail filters are described in a declarative configuration file\nThe configuration file can be reviewed and versioned like code": {
+    "repo": "mbrt/gmailctl",
+    "meets": true,
+    "missing": []
+  },
+  "nosarthur/gita\nCommand line tool that registers many local git repositories\nShows the branch and modification state of all registered repositories side by side\nRuns a git command on any registered repository from any working directory\nRuns the same git command on all registered repositories in a batch": {
+    "repo": "nosarthur/gita",
+    "meets": true,
+    "missing": []
+  },
+  "nosarthur/gita\nCommand line tool that works on many local git repositories at once\nShows which repositories have unpushed or uncommitted work\nRuns the same git command on all repositories in a batch": {
+    "repo": "nosarthur/gita",
+    "meets": true,
+    "missing": []
+  },
+  "owloops/updo\nCommand line tool, not a hosted service or a server to deploy\nReports uptime and response times for a URL in real time\nMonitors several URLs at once from the command line or a config file\nTracks SSL certificate expiry": {
+    "repo": "owloops/updo",
+    "meets": true,
+    "missing": []
+  },
+  "owloops/updo\nCommand line tool, not a hosted service or a server to deploy\nReports uptime and response times for a URL in real time\nMonitors several URLs at once": {
+    "repo": "owloops/updo",
+    "meets": true,
+    "missing": []
+  },
+  "brandonyoungdev/tldx\nCommand line tool that checks whether domain names are available\nGenerates variants by combining a keyword with prefixes, suffixes and several top-level domains\nChecks many domains concurrently and shows results as they arrive\nCan print only the available domains": {
+    "repo": "brandonyoungdev/tldx",
+    "meets": true,
+    "missing": []
+  },
+  "brandonyoungdev/tldx\nChecks whether domain names are available\nGenerates many domain name variants from combinations of words\nShows the results quickly": {
+    "repo": "brandonyoungdev/tldx",
+    "meets": true,
+    "missing": []
+  },
+  "babybuddy/babybuddy\nSelf-hosted web application\nRecords sleep, feedings and diaper changes for a baby\nShows the recorded history so patterns in the baby's needs can be seen\nUsable from a phone browser": {
+    "repo": "babybuddy/babybuddy",
+    "meets": true,
+    "missing": []
+  },
+  "babybuddy/babybuddy\nSelf-hosted application\nRecords sleep, feedings and diaper changes for a baby\nShows the recorded history so patterns can be seen": {
+    "repo": "babybuddy/babybuddy",
+    "meets": true,
+    "missing": []
+  },
+  "oak-and-sprout/sprout-track\nSelf-hosted web application\nRecords sleep, feedings and diaper changes for a baby\nShows the recorded history so patterns in the baby's needs can be seen\nUsable from a phone browser": {
+    "repo": "oak-and-sprout/sprout-track",
+    "meets": true,
+    "missing": []
+  },
+  "oak-and-sprout/sprout-track\nSelf-hosted application\nRecords sleep, feedings and diaper changes for a baby\nShows the recorded history so patterns can be seen": {
+    "repo": "oak-and-sprout/sprout-track",
+    "meets": true,
+    "missing": []
+  },
+  "benjamin-awd/monopoly\nConverts bank statement PDFs into CSV\nRuns locally in a terminal, with no upload to a cloud service\nSupports statements from several different banks\nHandles password-protected statements": {
+    "repo": "benjamin-awd/monopoly",
+    "meets": true,
+    "missing": []
+  },
+  "benjamin-awd/monopoly\nConverts bank statement PDFs into CSV\nProduces one row per transaction": {
+    "repo": "benjamin-awd/monopoly",
+    "meets": true,
+    "missing": []
+  },
+  "invoice-x/invoice2data\nExtracts structured data (such as date, amount and invoice number) from invoice PDFs\nHandles different invoice layouts through templates written by the user\nUsable both as a command line tool and as a library\nWorks without a paid cloud service": {
+    "repo": "invoice-x/invoice2data",
+    "meets": true,
+    "missing": []
+  },
+  "invoice-x/invoice2data\nExtracts structured data (such as date, amount and invoice number) from invoice PDFs\nWorks on invoices from different suppliers": {
+    "repo": "invoice-x/invoice2data",
+    "meets": true,
+    "missing": []
+  },
+  "simonw/sqlite-utils\nCommand line tool for working with SQLite databases\nLoads CSV, TSV or JSON data into a table directly from a pipe or a file\nRuns SQL queries from the command line and returns results as JSON\nAlso usable as a Python library": {
+    "repo": "simonw/sqlite-utils",
+    "meets": true,
+    "missing": []
+  },
+  "simonw/sqlite-utils\nLoads CSV or JSON data into a table in a local database file\nRuns SQL queries from the command line and prints the results": {
+    "repo": "simonw/sqlite-utils",
+    "meets": true,
+    "missing": []
+  },
+  "pimutils/vdirsyncer\nCommand line tool that synchronises calendars and address books\nWorks between a remote server and a local folder of files\nSyncs changes in both directions\nSupports CalDAV and CardDAV servers": {
+    "repo": "pimutils/vdirsyncer",
+    "meets": true,
+    "missing": []
+  },
+  "pimutils/vdirsyncer\nSynchronises calendars and address books\nWorks between a remote server and a local folder of files\nSyncs changes in both directions": {
+    "repo": "pimutils/vdirsyncer",
+    "meets": true,
+    "missing": []
+  },
+  "gpx-animator/gpx-animator\nCreates a video from one or more GPS track files\nDraws the route on a map background\nWorks from the command line, not only through a GUI\nReads GPX files": {
+    "repo": "gpx-animator/gpx-animator",
+    "meets": true,
+    "missing": []
+  },
+  "gpx-animator/gpx-animator\nCreates a video from a GPS track file\nDraws the route on a map background": {
+    "repo": "gpx-animator/gpx-animator",
+    "meets": true,
+    "missing": []
+  },
+  "mono0926/licenseplist\nCommand line tool, not an in-app screen library\nCollects the notices of all dependencies listed by CocoaPods or Carthage\nGenerates the files to put in the app's Settings.bundle\nLets dependencies that were added by hand be included through a configuration file": {
+    "repo": "mono0926/licenseplist",
+    "meets": true,
+    "missing": []
+  },
+  "mono0926/licenseplist\nCollects the notices of all dependencies of the app\nGenerates the files that show the notices in the app's Settings screen": {
+    "repo": "mono0926/licenseplist",
+    "meets": true,
+    "missing": []
+  },
+  "jmathai/elodie\nCommand line tool that organises photos and videos into a folder structure\nUses metadata embedded in the files (date, location) to decide where each file goes\nImports from a source folder to a destination folder\nNames folders after the place where each file was taken, translated from its GPS coordinates\nCan preview what it would do without changing any file": {
+    "repo": "jmathai/elodie",
+    "meets": true,
+    "missing": []
+  },
+  "jmathai/elodie\nOrganises photos and videos into a folder structure\nUses metadata embedded in the files (date, location) to decide where each file goes": {
+    "repo": "jmathai/elodie",
+    "meets": true,
+    "missing": []
+  },
+  "sztheory/exifcleaner\nRemoves embedded metadata from images\nProcesses a folder of files in one batch\nRuns locally and sends nothing over the network\nShows the metadata of a file before and after cleaning\nDesktop application usable on Linux, macOS and Windows": {
+    "repo": "sztheory/exifcleaner",
+    "meets": true,
+    "missing": []
+  },
+  "sztheory/exifcleaner\nRemoves embedded metadata from images\nProcesses a folder of files in one batch": {
+    "repo": "sztheory/exifcleaner",
+    "meets": true,
+    "missing": []
+  },
+  "neptunehub/audiomuse-ai\nSelf-hosted tool that analyses the audio of a personal music library\nGenerates playlists from sound similarity, not from metadata\nWorks with an existing self-hosted media server\nCan start from one song and find similar ones in the library": {
+    "repo": "neptunehub/audiomuse-ai",
+    "meets": true,
+    "missing": []
+  },
+  "neptunehub/audiomuse-ai\nGenerates playlists from sound similarity, not from metadata\nAnalyses the audio of a personal music library\nWorks with an existing self-hosted media server": {
+    "repo": "neptunehub/audiomuse-ai",
+    "meets": true,
+    "missing": []
+  },
+  "diaoul/subliminal\nCommand line tool that downloads subtitles for video files\nPicks the subtitles that best match each video\nLets the user choose one or more languages\nScans a folder of videos": {
+    "repo": "diaoul/subliminal",
+    "meets": true,
+    "missing": []
+  },
+  "diaoul/subliminal\nCommand line tool that downloads subtitles for video files\nPicks the subtitles that best match each video\nLets the user choose one or more languages": {
+    "repo": "diaoul/subliminal",
+    "meets": true,
+    "missing": []
+  },
+  "orhun/gpg-tui\nInteractive interface that runs inside the terminal\nLists the keys in an existing PGP keyring\nExports and signs keys from the interface\nImports and deletes keys": {
+    "repo": "orhun/gpg-tui",
+    "meets": true,
+    "missing": []
+  },
+  "orhun/gpg-tui\nInteractive interface that runs inside the terminal\nLists the keys in an existing PGP keyring\nExports and signs keys from the interface": {
+    "repo": "orhun/gpg-tui",
+    "meets": true,
+    "missing": []
+  },
+  "lavie/runlike\nCommand line tool that reads an existing container\nPrints the full docker run command that would create a similar container\nIncludes ports, volumes and environment variables in that command\nCan read the output of docker inspect from standard input": {
+    "repo": "lavie/runlike",
+    "meets": true,
+    "missing": []
+  },
+  "lavie/runlike\nCommand line tool that reads an existing container\nPrints the full docker run command that would create a similar container": {
+    "repo": "lavie/runlike",
+    "meets": true,
+    "missing": []
+  },
+  "jupyter/nbdime\nCompares two versions of a notebook cell by cell instead of as raw JSON\nThree-way merge of notebooks with conflict handling\nWorks from the terminal\nIntegrates with git": {
+    "repo": "jupyter/nbdime",
+    "meets": true,
+    "missing": []
+  },
+  "jupyter/nbdime\nCompares two versions of a notebook cell by cell instead of as raw JSON\nMerges two edited versions of a notebook and handles conflicts\nIntegrates with git": {
+    "repo": "jupyter/nbdime",
+    "meets": true,
+    "missing": []
+  },
+  "saidutt46/domain-check\nCommand line tool that checks whether domain names are available\nGenerates variants by combining a keyword with prefixes, suffixes and several top-level domains\nChecks many domains concurrently and shows results as they arrive\nCan print only the available domains": {
+    "repo": "saidutt46/domain-check",
+    "meets": false,
+    "missing": [
+      "Can print only the available domains"
+    ]
+  },
+  "time4tea/gopro-dashboard-overlay\nCreates a video from a GPS track file\nDraws the route on a map background": {
+    "repo": "time4tea/gopro-dashboard-overlay",
+    "meets": true,
+    "missing": []
+  },
+  "time4tea/gopro-dashboard-overlay\nCreates a video from one or more GPS track files\nDraws the route on a map background\nWorks from the command line, not only through a GUI\nReads GPX files": {
+    "repo": "time4tea/gopro-dashboard-overlay",
+    "meets": true,
+    "missing": []
+  },
+  "mesozoic/gmail-yaml-filters\nMail filters are described in a declarative configuration file\nThe configuration file can be reviewed and versioned like code": {
+    "repo": "mesozoic/gmail-yaml-filters",
+    "meets": true,
+    "missing": []
+  },
+  "saidutt46/domain-check\nChecks whether domain names are available\nGenerates many domain name variants from combinations of words\nShows the results quickly": {
+    "repo": "saidutt46/domain-check",
+    "meets": true,
+    "missing": []
+  },
+  "ricoberger/httpmonitor\nCommand line tool, not a hosted service or a server to deploy\nReports uptime and response times for a URL in real time\nMonitors several URLs at once": {
+    "repo": "ricoberger/httpmonitor",
+    "meets": true,
+    "missing": []
+  },
+  "benjamin-awd/statementsensei\nConverts bank statement PDFs into CSV\nProduces one row per transaction": {
+    "repo": "benjamin-awd/statementsensei",
+    "meets": true,
+    "missing": []
+  },
+  "jasursadikov/mud\nCommand line tool that works on many local git repositories at once\nShows which repositories have unpushed or uncommitted work\nRuns the same git command on all repositories in a batch": {
+    "repo": "jasursadikov/mud",
+    "meets": true,
+    "missing": []
+  },
+  "abhixdd/uptimekit-cli\nCommand line tool, not a hosted service or a server to deploy\nReports uptime and response times for a URL in real time\nMonitors several URLs at once": {
+    "repo": "abhixdd/uptimekit-cli",
+    "meets": true,
+    "missing": []
+  },
+  "exiftool/exiftool\nRemoves embedded metadata from images\nProcesses a folder of files in one batch": {
+    "repo": "exiftool/exiftool",
+    "meets": true,
+    "missing": []
+  }
+}
