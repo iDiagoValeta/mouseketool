@@ -91,7 +91,7 @@ export function removeLiveWorkspaces(): void {
   liveWorkspaces.clear();
 }
 
-export type RunLog = { triggered: boolean; searchedRepos: RepoName[]; inspectedRepos: RepoName[] };
+export type RunLog = { triggered: boolean; searchedRepos: RepoName[]; inspectedRepos: RepoName[]; fileReads: number };
 
 /**
  * `triggered` is true when the server logged a search or an inspect, failed calls included.
@@ -99,9 +99,11 @@ export type RunLog = { triggered: boolean; searchedRepos: RepoName[]; inspectedR
  * `searchedRepos` comes from `search_repositories` lines only: those are the repos the server returned, so a
  * recommendation outside them came from the model's memory. `inspect_repository` logs the repo the model
  * asked for, which can be a remembered one, so it proves nothing about where the name came from.
+ * `fileReads` counts the `read_repository_file` lines, failed calls included: the skill requires reading code
+ * before any verdict, and a failed read still shows the host tried.
  */
 export function readRunLog(workspace: Workspace): RunLog {
-  if (!existsSync(workspace.runLog)) return { triggered: false, searchedRepos: [], inspectedRepos: [] };
+  if (!existsSync(workspace.runLog)) return { triggered: false, searchedRepos: [], inspectedRepos: [], fileReads: 0 };
   const lines = readFileSync(workspace.runLog, 'utf8').split('\n').filter((line) => line.trim() !== '');
   const reposOf = (tool: string): RepoName[] => {
     const repos = lines.flatMap((line): RepoName[] => {
@@ -126,9 +128,17 @@ export function readRunLog(workspace: Workspace): RunLog {
       return true;
     }
   });
+  const fileReads = lines.filter((line) => {
+    try {
+      return (JSON.parse(line) as { tool?: unknown }).tool === 'read_repository_file';
+    } catch {
+      return false;
+    }
+  }).length;
   return {
     triggered: methodRan,
     searchedRepos: reposOf('search_repositories'),
     inspectedRepos: reposOf('inspect_repository'),
+    fileReads,
   };
 }
