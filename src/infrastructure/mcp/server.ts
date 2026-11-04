@@ -16,13 +16,14 @@ import pkg from '../../../package.json' with { type: 'json' };
 const SEARCH_DESCRIPTION =
   'Searches GitHub for existing projects. Takes 1 to 15 varied queries in one call: ' +
   'synonyms, community names, and "topic:" qualifiers. Returns the merged candidates as JSON ' +
-  '(name, url, description, stars, license, topics, last push, matchedQueries) plus per-query ' +
+  '(name, url, description, stars, pushedAt, license, topics, archived, language, matchedQueries) plus per-query ' +
   'errors. Candidates found by several queries rank first. The server does no judging: ' +
   'deciding what is relevant is up to you.';
 
 const INSPECT_DESCRIPTION =
-  'Inspects one GitHub repository. Returns JSON with its metadata, health signals ' +
-  '(maintenance, adoption), activity of the last 90 days, the README (truncated) and the ' +
+  'Inspects one GitHub repository. Returns JSON with its metadata (candidate), health signals ' +
+  '(archived, monthsSinceLastPush, stale, licenseKind, maintenance), activity of the last 90 days ' +
+  '(commits, closed issues, open issues, contributors, latest release), the README (truncated) and the ' +
   'top-level file list. The server does no judging: it reports facts, you decide. ' +
   '`repo` is "owner/name" or a GitHub URL.';
 

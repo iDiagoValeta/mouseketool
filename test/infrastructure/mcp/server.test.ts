@@ -86,6 +86,28 @@ describe('createMcpServer', () => {
     expect(search?.description).toMatch(/does no judging/i);
   });
 
+  it('names in the descriptions the fields the responses really carry', async () => {
+    const source = new InMemorySource({
+      searches: { 'local rag': [candidate('foo/bar', 5)] },
+      repos: [{ candidate: candidate('foo/bar', 5), readme: '# bar', tree: ['src'] }],
+    });
+    const client = await connect(source);
+    const { tools } = await client.listTools();
+    const described = (name: string) => tools.find((tool) => tool.name === name)?.description ?? '';
+
+    const found = JSON.parse(
+      textOf(await client.callTool({ name: 'search_repositories', arguments: { queries: ['local rag'] } })),
+    ) as { candidates: Record<string, unknown>[] };
+    const inspected = JSON.parse(
+      textOf(await client.callTool({ name: 'inspect_repository', arguments: { repo: 'foo/bar' } })),
+    ) as { health: Record<string, unknown> };
+
+    for (const field of Object.keys(found.candidates[0]!)) expect(described('search_repositories')).toContain(field);
+    for (const field of Object.keys(inspected.health)) expect(described('inspect_repository')).toContain(field);
+    // The health block has no adoption field: stars and contributors are raw facts, not a signal.
+    expect(described('inspect_repository')).not.toMatch(/adoption/i);
+  });
+
   it('returns merged candidates from search_repositories as JSON', async () => {
     const source = new InMemorySource({
       searches: {
