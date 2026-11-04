@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.1...v1.0.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* **skill:** inspect mature foundations and read code before any verdict ([#19](https://github.com/iDiagoValeta/mouseketool/issues/19)) ([#20](https://github.com/iDiagoValeta/mouseketool/issues/20)) ([454be6c](https://github.com/iDiagoValeta/mouseketool/commit/454be6c31be590c3499d1b3183e620c6ddbb1429))
+
 ## [1.0.1](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.0...v1.0.1) (2026-11-04)
 
 
