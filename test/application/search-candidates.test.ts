@@ -38,6 +38,17 @@ describe('searchCandidates', () => {
     ]);
   });
 
+  it('cuts a description over 350 characters, so one spam repo cannot flood the answer', async () => {
+    const spam = { ...candidate('spam/repo'), description: 'x'.repeat(250_000) };
+    const fine = { ...candidate('fine/repo'), description: 'y'.repeat(350) };
+    const source = new InMemorySource({ searches: { q: [spam, fine] } });
+
+    const result = await searchCandidates({ source, log: new MemoryRunLog() }, { queries: ['q'] });
+
+    expect(result.candidates.find((c) => c.name === 'spam/repo')?.description).toBe(`${'x'.repeat(350)} [truncated]`);
+    expect(result.candidates.find((c) => c.name === 'fine/repo')?.description).toBe('y'.repeat(350));
+  });
+
   it('asks the source for 10 results per query', async () => {
     const source = new InMemorySource();
 

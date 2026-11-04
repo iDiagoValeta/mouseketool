@@ -1,4 +1,4 @@
-import { mergeResults } from '../domain/candidate.ts';
+import { mergeResults, shortenDescription } from '../domain/candidate.ts';
 import type { Candidate, RankedCandidate } from '../domain/candidate.ts';
 import type { RunLog } from './ports/run-log.ts';
 import type { RepositorySource } from './ports/repository-source.ts';
@@ -50,7 +50,7 @@ async function search(source: RepositorySource, queries: string[]): Promise<Sear
   const errors: SearchResult['errors'] = [];
   for (const query of queries) {
     try {
-      found.push(await source.search(query, RESULTS_PER_QUERY));
+      found.push((await source.search(query, RESULTS_PER_QUERY)).map(shortenDescription));
     } catch (reason) {
       errors.push({
         query,
