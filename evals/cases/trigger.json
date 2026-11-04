@@ -1,0 +1,26 @@
+[
+  {
+    "id": "trg-verbose-flag",
+    "prompt": "Add a --verbose flag to the CLI in src/cli.ts that prints each file it processes."
+  },
+  {
+    "id": "trg-rename-by-date",
+    "prompt": "Write a script that renames all the photos in this folder to the date they were taken, like 2024-05-12_001.jpg."
+  },
+  {
+    "id": "trg-fix-failing-test",
+    "prompt": "The test in test/parser.test.ts is failing with an off-by-one error on the last line, please fix it."
+  },
+  {
+    "id": "trg-write-regex",
+    "prompt": "Write a regex that matches ISO 8601 dates such as 2026-11-03."
+  },
+  {
+    "id": "trg-bump-version",
+    "prompt": "Bump the version in package.json to 1.4.0 and add a matching entry to CHANGELOG.md."
+  },
+  {
+    "id": "trg-async-await",
+    "prompt": "Convert the fetchUser function in api.ts from promise chains to async/await."
+  }
+]

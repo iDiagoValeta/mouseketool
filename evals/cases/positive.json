@@ -1,0 +1,517 @@
+[
+  {
+    "id": "pos-env-file-checks",
+    "vague": {
+      "text": "I'm about to write a checker that catches duplicated keys and formatting slips in my environment variable files before they break a deploy.",
+      "mustHaves": [
+        "Checks environment variable files for problems",
+        "Detects duplicated keys",
+        "Detects style and formatting problems"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that checks environment variable files for problems",
+        "Detects duplicated keys",
+        "Detects style problems such as spaces around the equals sign or lowercase key names",
+        "Exits with a non-zero status when it finds problems, so CI can fail on it"
+      ],
+      "niceToHaves": [
+        "Can fix the problems it finds automatically",
+        "Ready-made pre-commit or GitHub Actions integration"
+      ]
+    },
+    "knownMatches": [
+      "dotenv-linter/dotenv-linter",
+      "wemake-services/dotenv-linter"
+    ]
+  },
+  {
+    "id": "pos-clean-build-artifacts",
+    "vague": {
+      "text": "I want to write a tool that wipes the dependency folders and build output from all my old projects, whatever language each one uses, in one go.",
+      "mustHaves": [
+        "Scans a directory tree and finds software projects in it",
+        "Recognises several ecosystems, not just one",
+        "Removes regenerable artifacts such as dependencies and build output"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Scans a directory tree and finds software projects in it",
+        "Recognises several ecosystems (Node, Rust, Python, Java and others), not just one",
+        "Removes only regenerable artifacts such as dependencies and build output, never source code",
+        "Asks for confirmation before deleting anything"
+      ],
+      "niceToHaves": [
+        "Shows how much space each project would free",
+        "Has a graphical interface besides the command line"
+      ]
+    },
+    "knownMatches": [
+      "tbillington/kondo"
+    ]
+  },
+  {
+    "id": "pos-gmail-filters-as-code",
+    "vague": {
+      "text": "I'd like to build a way to keep my mail inbox rules in a file I can review, like code.",
+      "mustHaves": [
+        "Mail filters are described in a declarative configuration file",
+        "The configuration file can be reviewed and versioned like code"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Gmail filters are described in a declarative configuration file",
+        "Shows a diff of the changes before they are applied",
+        "Applies the filters to the Gmail account through its API, with no manual import step",
+        "Reduces long filter queries so they stay under Gmail's size limit"
+      ],
+      "niceToHaves": [
+        "Imports the filters already in the account into the configuration file",
+        "Lets filters be composed from reusable pieces"
+      ]
+    },
+    "knownMatches": [
+      "mbrt/gmailctl"
+    ]
+  },
+  {
+    "id": "pos-many-git-repos",
+    "vague": {
+      "text": "I want to build a command line tool that shows which of my dozens of checked-out repositories have unpushed work and runs one command across all of them.",
+      "mustHaves": [
+        "Command line tool that works on many local git repositories at once",
+        "Shows which repositories have unpushed or uncommitted work",
+        "Runs the same git command on all repositories in a batch"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that registers many local git repositories",
+        "Shows the branch and modification state of all registered repositories side by side",
+        "Runs a git command on any registered repository from any working directory",
+        "Runs the same git command on all registered repositories in a batch"
+      ],
+      "niceToHaves": [
+        "Lets repositories be grouped",
+        "Runs arbitrary shell commands, not only git, on the repositories"
+      ]
+    },
+    "knownMatches": [
+      "nosarthur/gita"
+    ]
+  },
+  {
+    "id": "pos-terminal-site-monitor",
+    "vague": {
+      "text": "I want to build a tool for my terminal that watches whether my websites are up and how fast they answer, without running a monitoring server.",
+      "mustHaves": [
+        "Command line tool, not a hosted service or a server to deploy",
+        "Reports uptime and response times for a URL in real time",
+        "Monitors several URLs at once"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool, not a hosted service or a server to deploy",
+        "Reports uptime and response times for a URL in real time",
+        "Monitors several URLs at once from the command line or a config file",
+        "Tracks SSL certificate expiry"
+      ],
+      "niceToHaves": [
+        "Sends alerts to Slack, Discord or a webhook",
+        "Exports metrics to Prometheus"
+      ]
+    },
+    "knownMatches": [
+      "owloops/updo"
+    ]
+  },
+  {
+    "id": "pos-domain-name-brainstorm",
+    "vague": {
+      "text": "When naming a side project I want to write a tool that tries many word combinations and shows right away which web addresses are still free.",
+      "mustHaves": [
+        "Checks whether domain names are available",
+        "Generates many domain name variants from combinations of words",
+        "Shows the results quickly"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that checks whether domain names are available",
+        "Generates variants by combining a keyword with prefixes, suffixes and several top-level domains",
+        "Checks many domains concurrently and shows results as they arrive",
+        "Can print only the available domains"
+      ],
+      "niceToHaves": [
+        "Machine-readable output such as JSON or CSV",
+        "Saved presets of top-level domains"
+      ]
+    },
+    "knownMatches": [
+      "brandonyoungdev/tldx"
+    ]
+  },
+  {
+    "id": "pos-baby-care-log",
+    "vague": {
+      "text": "As a new parent I'd like to build an app on my own server to log feedings, sleep and nappy changes and spot patterns in them.",
+      "mustHaves": [
+        "Self-hosted application",
+        "Records sleep, feedings and diaper changes for a baby",
+        "Shows the recorded history so patterns can be seen"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Self-hosted web application",
+        "Records sleep, feedings and diaper changes for a baby",
+        "Shows the recorded history so patterns in the baby's needs can be seen",
+        "Usable from a phone browser"
+      ],
+      "niceToHaves": [
+        "Several caregivers can share the same data",
+        "Tummy time and other activity tracking"
+      ]
+    },
+    "knownMatches": [
+      "babybuddy/babybuddy",
+      "oak-and-sprout/sprout-track"
+    ]
+  },
+  {
+    "id": "pos-bank-statement-to-csv",
+    "vague": {
+      "text": "I'd like to build something that turns the PDF statements my bank sends each month into spreadsheet rows without retyping them.",
+      "mustHaves": [
+        "Converts bank statement PDFs into CSV",
+        "Produces one row per transaction"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Converts bank statement PDFs into CSV",
+        "Runs locally in a terminal, with no upload to a cloud service",
+        "Supports statements from several different banks",
+        "Handles password-protected statements"
+      ],
+      "niceToHaves": [
+        "OCR for scanned statements",
+        "Usable as a library from Python code"
+      ]
+    },
+    "knownMatches": [
+      "benjamin-awd/monopoly"
+    ]
+  },
+  {
+    "id": "pos-invoice-data-extraction",
+    "vague": {
+      "text": "Our accounting inbox fills with supplier bills as attachments and I want to build something that pulls the amounts, dates and reference numbers out automatically.",
+      "mustHaves": [
+        "Extracts structured data (such as date, amount and invoice number) from invoice PDFs",
+        "Works on invoices from different suppliers"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Extracts structured data (such as date, amount and invoice number) from invoice PDFs",
+        "Handles different invoice layouts through templates written by the user",
+        "Usable both as a command line tool and as a library",
+        "Works without a paid cloud service"
+      ],
+      "niceToHaves": [
+        "OCR fallback for scanned invoices",
+        "Output as JSON, CSV or XML"
+      ]
+    },
+    "knownMatches": [
+      "invoice-x/invoice2data"
+    ]
+  },
+  {
+    "id": "pos-csv-json-into-sqlite",
+    "vague": {
+      "text": "I want to write a small tool that loads the CSV and JSON exports I regularly get into a local database file and lets me query them from the shell.",
+      "mustHaves": [
+        "Loads CSV or JSON data into a table in a local database file",
+        "Runs SQL queries from the command line and prints the results"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool for working with SQLite databases",
+        "Loads CSV, TSV or JSON data into a table directly from a pipe or a file",
+        "Runs SQL queries from the command line and returns results as JSON",
+        "Also usable as a Python library"
+      ],
+      "niceToHaves": [
+        "Sets up full-text search on a table",
+        "Changes table schemas in ways plain ALTER TABLE does not allow"
+      ]
+    },
+    "knownMatches": [
+      "simonw/sqlite-utils"
+    ]
+  },
+  {
+    "id": "pos-calendar-contacts-sync",
+    "vague": {
+      "text": "I want to build a way to keep my calendar and address book as plain files on my laptop so my own programs can edit them, while staying in sync with my server.",
+      "mustHaves": [
+        "Synchronises calendars and address books",
+        "Works between a remote server and a local folder of files",
+        "Syncs changes in both directions"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that synchronises calendars and address books",
+        "Works between a remote server and a local folder of files",
+        "Syncs changes in both directions",
+        "Supports CalDAV and CardDAV servers"
+      ],
+      "niceToHaves": [
+        "Can also sync between two servers",
+        "Runs unattended from a scheduler"
+      ]
+    },
+    "knownMatches": [
+      "pimutils/vdirsyncer"
+    ]
+  },
+  {
+    "id": "pos-gps-track-video",
+    "vague": {
+      "text": "I want to build a tool that turns the GPS track of a ride into a video of a dot moving across a map.",
+      "mustHaves": [
+        "Creates a video from a GPS track file",
+        "Draws the route on a map background"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Creates a video from one or more GPS track files",
+        "Draws the route on a map background",
+        "Works from the command line, not only through a GUI",
+        "Reads GPX files"
+      ],
+      "niceToHaves": [
+        "Different map tile sources",
+        "Control over video length and speed"
+      ]
+    },
+    "knownMatches": [
+      "gpx-animator/gpx-animator"
+    ]
+  },
+  {
+    "id": "pos-ios-dependency-notices",
+    "vague": {
+      "text": "I want to build something that puts the legal notices of every third-party package my iPhone app uses into the system Settings screen for the app, automatically.",
+      "mustHaves": [
+        "Collects the notices of all dependencies of the app",
+        "Generates the files that show the notices in the app's Settings screen"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool, not an in-app screen library",
+        "Collects the notices of all dependencies listed by CocoaPods or Carthage",
+        "Generates the files to put in the app's Settings.bundle",
+        "Lets dependencies that were added by hand be included through a configuration file"
+      ],
+      "niceToHaves": [
+        "Installable with Homebrew or Mint",
+        "Separate list and detail screens in the output"
+      ]
+    },
+    "knownMatches": [
+      "mono0926/licenseplist"
+    ]
+  },
+  {
+    "id": "pos-organise-photos-by-metadata",
+    "vague": {
+      "text": "I have thousands of photos and videos dumped in random folders and I want to write a tool that sorts them into folders by when and where they were taken.",
+      "mustHaves": [
+        "Organises photos and videos into a folder structure",
+        "Uses metadata embedded in the files (date, location) to decide where each file goes"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that organises photos and videos into a folder structure",
+        "Uses metadata embedded in the files (date, location) to decide where each file goes",
+        "Imports from a source folder to a destination folder",
+        "Names folders after the place where each file was taken, translated from its GPS coordinates",
+        "Can preview what it would do without changing any file"
+      ],
+      "niceToHaves": [
+        "Customisable folder structure",
+        "Handles audio files too"
+      ]
+    },
+    "knownMatches": [
+      "jmathai/elodie"
+    ]
+  },
+  {
+    "id": "pos-strip-image-metadata",
+    "vague": {
+      "text": "Before sharing pictures I want to build a tool that wipes the hidden location and camera details from a whole folder of them.",
+      "mustHaves": [
+        "Removes embedded metadata from images",
+        "Processes a folder of files in one batch"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Removes embedded metadata from images",
+        "Processes a folder of files in one batch",
+        "Runs locally and sends nothing over the network",
+        "Shows the metadata of a file before and after cleaning",
+        "Desktop application usable on Linux, macOS and Windows"
+      ],
+      "niceToHaves": [
+        "Cleans PDFs and media files too",
+        "Keeps the image orientation"
+      ]
+    },
+    "knownMatches": [
+      "sztheory/exifcleaner"
+    ]
+  },
+  {
+    "id": "pos-sonic-playlists",
+    "vague": {
+      "text": "My music server has thousands of tracks I forgot about and I want to build something that makes playlists from how songs sound rather than from their tags.",
+      "mustHaves": [
+        "Generates playlists from sound similarity, not from metadata",
+        "Analyses the audio of a personal music library",
+        "Works with an existing self-hosted media server"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Self-hosted tool that analyses the audio of a personal music library",
+        "Generates playlists from sound similarity, not from metadata",
+        "Works with an existing self-hosted media server",
+        "Can start from one song and find similar ones in the library"
+      ],
+      "niceToHaves": [
+        "Clusters the library into groups automatically",
+        "Runs with Docker Compose"
+      ]
+    },
+    "knownMatches": [
+      "neptunehub/audiomuse-ai"
+    ]
+  },
+  {
+    "id": "pos-subtitle-download",
+    "vague": {
+      "text": "I'd like to write one command that looks at my video files and fetches matching subtitles in the languages I choose.",
+      "mustHaves": [
+        "Command line tool that downloads subtitles for video files",
+        "Picks the subtitles that best match each video",
+        "Lets the user choose one or more languages"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that downloads subtitles for video files",
+        "Picks the subtitles that best match each video",
+        "Lets the user choose one or more languages",
+        "Scans a folder of videos"
+      ],
+      "niceToHaves": [
+        "Usable as a Python library",
+        "Skips videos that already have subtitles"
+      ]
+    },
+    "knownMatches": [
+      "diaoul/subliminal"
+    ]
+  },
+  {
+    "id": "pos-pgp-key-manager",
+    "vague": {
+      "text": "Managing my PGP keyring with raw shell commands is tedious and I'd like to build a friendlier screen in the terminal for listing, exporting and signing keys.",
+      "mustHaves": [
+        "Interactive interface that runs inside the terminal",
+        "Lists the keys in an existing PGP keyring",
+        "Exports and signs keys from the interface"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Interactive interface that runs inside the terminal",
+        "Lists the keys in an existing PGP keyring",
+        "Exports and signs keys from the interface",
+        "Imports and deletes keys"
+      ],
+      "niceToHaves": [
+        "Falls back to the command line for advanced operations",
+        "Selectable colour styles"
+      ]
+    },
+    "knownMatches": [
+      "orhun/gpg-tui"
+    ]
+  },
+  {
+    "id": "pos-container-to-run-command",
+    "vague": {
+      "text": "I want to build a tool that prints the exact docker options an already running container was started with, so I can start an identical one elsewhere.",
+      "mustHaves": [
+        "Command line tool that reads an existing container",
+        "Prints the full docker run command that would create a similar container"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Command line tool that reads an existing container",
+        "Prints the full docker run command that would create a similar container",
+        "Includes ports, volumes and environment variables in that command",
+        "Can read the output of docker inspect from standard input"
+      ],
+      "niceToHaves": [
+        "Pretty-prints the command over several lines",
+        "Works from a container name or id"
+      ]
+    },
+    "knownMatches": [
+      "lavie/runlike"
+    ]
+  },
+  {
+    "id": "pos-notebook-comparison",
+    "vague": {
+      "text": "When two people edit the same data-science notebook, git shows an unreadable wall of JSON, so I want to build comparison and conflict resolution that understand cells.",
+      "mustHaves": [
+        "Compares two versions of a notebook cell by cell instead of as raw JSON",
+        "Merges two edited versions of a notebook and handles conflicts",
+        "Integrates with git"
+      ]
+    },
+    "defined": {
+      "mustHaves": [
+        "Compares two versions of a notebook cell by cell instead of as raw JSON",
+        "Three-way merge of notebooks with conflict handling",
+        "Works from the terminal",
+        "Integrates with git"
+      ],
+      "niceToHaves": [
+        "Rendered web view of the comparison",
+        "Automatic resolution of simple conflicts"
+      ]
+    },
+    "knownMatches": [
+      "jupyter/nbdime"
+    ]
+  }
+]

@@ -9,6 +9,7 @@ Hexagonal (ports and adapters). Dependencies point inward:
 
 - `src/domain/**` and `src/application/**` import nothing from `src/infrastructure/**`, `@modelcontextprotocol/*`, `node:child_process`, `node:fs` or `node:fs/promises`.
 - ESLint `no-restricted-imports` enforces this in `pnpm lint`. `test/architecture/contract.test.ts` checks that the rule still fires on a known violation (`test/architecture/fixtures/`).
+- `src/infrastructure/mcp/**` (the driving adapter) imports no other adapter (`**/github/**`, `**/run-log/**`); the errors it tells apart, `SourceError` and `SourceRateLimitedError`, live next to `RepositorySource` in `src/application/ports/`.
 - Adapters live in `src/infrastructure/**`. The composition root, `src/composition-root.ts`, is the only place that wires them to ports.
 
 ## Commands

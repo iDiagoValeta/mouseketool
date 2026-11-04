@@ -1,4 +1,4 @@
-import { mergeResults } from '../domain/candidate.ts';
+import { mergeResults, shortenDescription } from '../domain/candidate.ts';
 import type { Candidate, RankedCandidate } from '../domain/candidate.ts';
 import type { RunLog } from './ports/run-log.ts';
 import type { RepositorySource } from './ports/repository-source.ts';
@@ -44,24 +44,20 @@ async function search(source: RepositorySource, queries: string[]): Promise<Sear
     throw new TooManyQueriesError(`At most ${MAX_QUERIES} queries per call, got ${queries.length}`);
   }
 
-  // One failing query must not hide the results of the others.
-  const settled = await Promise.allSettled(
-    queries.map((query) => source.search(query, RESULTS_PER_QUERY)),
-  );
-
+  // Sequential, because GitHub also limits concurrent search requests, and one failing query
+  // must not hide the results of the others.
   const found: Candidate[][] = [];
   const errors: SearchResult['errors'] = [];
-  settled.forEach((outcome, index) => {
-    if (outcome.status === 'fulfilled') {
-      found.push(outcome.value);
-    } else {
-      const reason: unknown = outcome.reason;
+  for (const query of queries) {
+    try {
+      found.push((await source.search(query, RESULTS_PER_QUERY)).map(shortenDescription));
+    } catch (reason) {
       errors.push({
-        query: queries[index] as string,
+        query,
         message: reason instanceof Error ? reason.message : String(reason),
       });
     }
-  });
+  }
 
   return { candidates: mergeResults(found, RESULT_LIMIT), errors };
 }

@@ -1,5 +1,11 @@
 {
   "name": "mouseketool",
   "version": "0.1.0",
-  "description": "A tool to find useful tools on github."
+  "description": "A tool to find useful tools on github.",
+  "mcpServers": {
+    "mouseketool": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"]
+    }
+  }
 }

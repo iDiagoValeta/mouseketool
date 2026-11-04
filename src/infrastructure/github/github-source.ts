@@ -1,6 +1,8 @@
-import type {
-  FileContent,
-  RepositorySource,
+import {
+  SourceError,
+  SourceRateLimitedError,
+  type FileContent,
+  type RepositorySource,
 } from '../../application/ports/repository-source.ts';
 import type { Candidate } from '../../domain/candidate.ts';
 import type { ActivityFacts } from '../../domain/health.ts';
@@ -18,7 +20,7 @@ const MAX_LIMIT_WAIT_MS = 60_000;
 const PAGE = 100;
 const BINARY_SNIFF_BYTES = 8_000;
 
-export class GitHubError extends Error {
+export class GitHubError extends SourceError {
   override name = 'GitHubError';
 
   /** `status` is null when no response came back at all. */
@@ -31,11 +33,11 @@ export class GitHubError extends Error {
   }
 }
 
-export class RateLimitedError extends Error {
+export class RateLimitedError extends SourceRateLimitedError {
   override name = 'RateLimitedError';
 
-  constructor(readonly resetAt: Date) {
-    super(`GitHub rate limit reached; it resets at ${resetAt.toISOString()}`);
+  constructor(resetAt: Date) {
+    super(resetAt, `GitHub rate limit reached; it resets at ${resetAt.toISOString()}`);
   }
 }
 
@@ -58,6 +60,9 @@ export class GitHubSource implements RepositorySource {
   private readonly fetchFn: typeof fetch;
   private readonly searchLimiter: RateLimiter;
   private readonly clock: Clock;
+  // Epoch ms at which an exhausted search quota refills; each process starts blind, so the
+  // headers of the last search response are the only way to learn what earlier ones spent.
+  private searchQuotaResetsAt: number | null = null;
 
   constructor(opts: {
     token: string;
@@ -72,9 +77,11 @@ export class GitHubSource implements RepositorySource {
   }
 
   async search(query: string, perQuery: number): Promise<Candidate[]> {
+    await this.waitForSearchQuota();
     await this.searchLimiter.acquire();
     const params = new URLSearchParams({ q: query, per_page: String(perQuery) });
     const response = await this.request(`/search/repositories?${params}`);
+    this.noteSearchQuota(response);
     const body = (await response.json()) as { items: RepoJson[] };
 
     // One malformed name must not cost the whole query its results.
@@ -85,6 +92,28 @@ export class GitHubSource implements RepositorySource {
         return [];
       }
     });
+  }
+
+  /** Sleeps out an exhausted quota, or fails at once when the reset is too far to wait for. */
+  private async waitForSearchQuota(): Promise<void> {
+    if (this.searchQuotaResetsAt === null) {
+      return;
+    }
+    const resetsAt = this.searchQuotaResetsAt;
+    const waitMs = resetsAt - this.clock.now();
+    if (waitMs > MAX_LIMIT_WAIT_MS) {
+      throw new RateLimitedError(new Date(resetsAt));
+    }
+    this.searchQuotaResetsAt = null;
+    if (waitMs > 0) {
+      await this.clock.sleep(waitMs);
+    }
+  }
+
+  private noteSearchQuota(response: Response): void {
+    const reset = response.headers.get('x-ratelimit-reset');
+    const exhausted = response.headers.get('x-ratelimit-remaining') === '0';
+    this.searchQuotaResetsAt = exhausted && reset !== null ? Number(reset) * 1000 : null;
   }
 
   async repository(name: RepoName): Promise<Candidate> {

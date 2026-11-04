@@ -16,6 +16,18 @@ export interface RankedCandidate extends Candidate {
   matchedQueries: number;
 }
 
+const DESCRIPTION_LIMIT = 350;
+
+/**
+ * GitHub's form caps a description at 350 characters, but the API returns whatever was stored:
+ * one spam repo with a 250,000-character description floods the agent's context on every search it matches.
+ */
+export function shortenDescription<T extends Candidate>(candidate: T): T {
+  const { description } = candidate;
+  if (description === null || description.length <= DESCRIPTION_LIMIT) return candidate;
+  return { ...candidate, description: `${description.slice(0, DESCRIPTION_LIMIT)} [truncated]` };
+}
+
 /**
  * Merges the results of several queries into one ranked list.
  * A repo found by several queries counts once, with its first-seen fields;

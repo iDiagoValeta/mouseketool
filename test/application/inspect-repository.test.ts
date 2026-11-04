@@ -75,6 +75,14 @@ describe('inspectRepository', () => {
     expect(report.tree).toEqual(['src', 'README.md']);
   });
 
+  it('cuts a candidate description over 350 characters and marks it', async () => {
+    const { deps } = setup({ candidate: { ...CANDIDATE, description: 'x'.repeat(5_000) } });
+
+    const report = await inspectRepository(deps, { repo: 'foo/bar' });
+
+    expect(report.candidate.description).toBe(`${'x'.repeat(350)} [truncated]`);
+  });
+
   it('cuts a README over 12,000 characters and marks it', async () => {
     const { deps } = setup({ readme: 'a'.repeat(13_000) });
 

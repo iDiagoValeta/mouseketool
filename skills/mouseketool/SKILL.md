@@ -1,6 +1,6 @@
 ---
 name: mouseketool
-description: Use when the user describes a new product, app, tool or service idea, or a large new component, before any design or code is written. Searches GitHub for existing projects that fit, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for small tasks such as scripts, flags, refactors, bug fixes or edits to an existing codebase.
+description: Use FIRST, before you start writing a new reusable tool, app, service or library for the user, whenever they want one to exist that they have not built yet: a product idea, a wish ("I want something that...", "a way to...") or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for a one-off script that performs an immediate action on the user's own files ("write a script that renames the photos in this folder" is an action, not a tool to research), nor when the user asks to change, fix or extend code that already exists in their project.
 ---
 
 # mouseketool
@@ -9,7 +9,7 @@ Before building something new, find out whether it already exists. The tools `se
 
 ## 1. Gate
 
-If the request is not a new product or a large new component, stop silently: no mention of this skill, no questions, no search. When in doubt, do not trigger: noise on a small task is the failure to avoid.
+Run the method when the user wants a new reusable tool, app, service or library to exist (an idea, a wish, a requirements list), even when phrased as a wish: that is exactly when people build what already exists. Do it before writing any file. Stop silently (no mention of this skill, no questions, no search) when the request is a one-off script that performs an immediate action, or asks to change, fix or extend code already in their project. A request that points at the user's own files or folder to act on ("this folder", "these files", "my photos here") is an immediate action even when it says "write a script". When in doubt between those, do not trigger: noise on a small task is the failure to avoid.
 
 ## 2. Read the input
 
@@ -17,11 +17,11 @@ Split the idea into must-haves and nice-to-haves, and note the stated use (comme
 
 ## 3. Expand
 
-Write 8 to 15 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 15 rewordings of the user's sentence.
+Write 8 to 15 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 15 rewordings of the user's sentence. GitHub matches every word of a query, so keep each to 2 to 4 keywords; long queries return nothing. Add `stars:>50` to at least half of them, so mature projects are not buried under one-person experiments.
 
 ## 4. Search and shortlist
 
-Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful, with queries from a different angle. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Keep a handful.
+Call `search_repositories` once with all queries. Call it a second time only if the first gave nothing useful or only tiny projects (under 50 stars), with queries from a different angle and `stars:>100`. Drop candidates that are archived, stale (last push over 18 months ago), or clearly off target. Keep a handful.
 
 ## 5. Inspect
 
@@ -29,7 +29,7 @@ Call `inspect_repository` on at most 6 candidates. Drop any with `health.archive
 
 ## 6. Judge
 
-For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), license fit, and the rough effort of adapting it versus building from scratch. Never recommend `reuse` or `adapt` for a candidate that misses a must-have.
+For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have.
 
 ## 7. Answer
 

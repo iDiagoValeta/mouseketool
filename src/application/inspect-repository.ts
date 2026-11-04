@@ -1,4 +1,4 @@
-import type { Candidate } from '../domain/candidate.ts';
+import { shortenDescription, type Candidate } from '../domain/candidate.ts';
 import { assessHealth } from '../domain/health.ts';
 import type { ActivityFacts, HealthSignals } from '../domain/health.ts';
 import { parseRepoName } from '../domain/repo-name.ts';
@@ -52,7 +52,7 @@ async function inspect(
   ]);
 
   return {
-    candidate,
+    candidate: shortenDescription(candidate),
     health: assessHealth(candidate, activity, now),
     activity,
     readme: readme === null ? null : truncate(readme, README_LIMIT),

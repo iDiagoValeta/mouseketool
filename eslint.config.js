@@ -19,4 +19,22 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Driving adapter: the MCP server reaches sources and logs through the ports only. The patterns have no
+    // `infrastructure/` prefix because the sibling import is written `../github/...`, which that prefix misses.
+    files: ['src/infrastructure/mcp/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/github/**', '**/run-log/**'],
+              message: 'The MCP adapter must not import another adapter; use the ports in src/application/ports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
