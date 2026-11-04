@@ -78,36 +78,51 @@ export class ClaudeJudge implements Judge {
   }
 }
 
-/** Remembers judgments in a JSON file so a repeated calibration or pass does not pay for the same verdict twice. Errors are not stored. */
+/**
+ * Remembers judgments in a JSON file so a repeated calibration or pass does not pay for the same verdict twice.
+ * Errors are not stored. The key is the repo and the requirements only: it ignores the judge prompt and model,
+ * so `judgments.json` must be deleted after changing either, or the old verdicts keep answering.
+ * The file is read once, at construction, so a corrupt one stops the run before any judge call.
+ */
 export class CachedJudge implements Judge {
-  private stored: Record<string, Judgment> | undefined;
+  private readonly stored: Record<string, Judgment>;
 
   constructor(
     private readonly inner: Judge,
     private readonly file: string,
-  ) {}
+  ) {
+    this.stored = CachedJudge.load(file);
+  }
 
   async judge(repo: RepoName, mustHaves: string[]): Promise<Judgment> {
     const key = `${repo}\n${mustHaves.join('\n')}`;
-    const stored = this.load();
-    const hit = stored[key];
+    const hit = this.stored[key];
     if (hit !== undefined) return hit;
     const judgment = await this.inner.judge(repo, mustHaves);
-    stored[key] = judgment;
+    this.stored[key] = judgment;
     mkdirSync(dirname(this.file), { recursive: true });
-    writeFileSync(this.file, JSON.stringify(stored, null, 2));
+    writeFileSync(this.file, JSON.stringify(this.stored, null, 2));
     return judgment;
   }
 
-  /** A missing file is an empty cache; one that does not parse throws, so it is never overwritten with less. */
-  private load(): Record<string, Judgment> {
-    if (this.stored !== undefined) return this.stored;
+  /** A missing file is an empty cache; one that is not a JSON object throws, so it is never overwritten with less. */
+  private static load(file: string): Record<string, Judgment> {
+    let text: string;
     try {
-      this.stored = JSON.parse(readFileSync(this.file, 'utf8')) as Record<string, Judgment>;
+      text = readFileSync(file, 'utf8');
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      this.stored = {};
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+      throw error;
     }
-    return this.stored;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`The judgment cache ${file} is not valid JSON; fix or delete it`, { cause: error });
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error(`The judgment cache ${file} is not a JSON object; fix or delete it`);
+    }
+    return parsed as Record<string, Judgment>;
   }
 }

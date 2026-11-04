@@ -123,10 +123,17 @@ describe('scoreRun, negative', () => {
     expect(calls).toEqual([]);
   });
 
-  it('passes on reuse or adapt of a repo that does not meet the requirements', async () => {
+  it('is a miss on reuse or adapt of a repo that does not meet the requirements', async () => {
     const { judge } = fakeJudge([]);
     const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b']), mustHaves, judge);
-    expect(score).toEqual({ verdict: true, judgments: [notFound('a/b')] });
+    expect(score).toEqual({ verdict: false, judgments: [notFound('a/b')] });
+  });
+
+  it('is a miss on reuse of a repo the search never returned, without judging it', async () => {
+    const { judge, calls } = fakeJudge(['a/b']);
+    const score = await scoreRun(run('negative'), outcome('Verdict: reuse a/b', ['x/y']), mustHaves, judge);
+    expect(score).toEqual({ verdict: false, judgments: [] });
+    expect(calls).toEqual([]);
   });
 
   it('flags the case as covered when a recommended repo meets every requirement', async () => {
@@ -141,10 +148,10 @@ describe('scoreRun, negative', () => {
     expect(calls).toEqual(['a/a', 'b/b', 'c/c']);
   });
 
-  it('treats a judge error as not covered and records it', async () => {
+  it('treats a judge error as not covered, so a miss, and records it', async () => {
     const { judge } = fakeJudge([], ['a/b']);
     const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b']), mustHaves, judge);
-    expect(score.verdict).toBe(true);
+    expect(score.verdict).toBe(false);
     expect(score.caseCovered).toBeUndefined();
     expect(score.judgeError).toContain('a/b');
   });

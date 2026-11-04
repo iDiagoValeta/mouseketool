@@ -179,11 +179,17 @@ describe('CachedJudge', () => {
     expect(calls).toHaveLength(2);
   });
 
-  it('refuses to overwrite a cache file it cannot read', async () => {
+  it.each(['null', '[]', '"text"', '3'])('rejects at construction a cache file holding %s, which is not an object', (content) => {
+    const bad = join(base, 'bad.json');
+    writeFileSync(bad, content);
+    expect(() => new CachedJudge(counting(meets).judge, bad)).toThrow('bad.json');
+  });
+
+  it('fails fast at construction on a cache file that does not parse, leaving it untouched', () => {
     const broken = join(base, 'broken.json');
     writeFileSync(broken, '{broken');
     const { judge, calls } = counting(meets);
-    await expect(new CachedJudge(judge, broken).judge(repo, mustHaves)).rejects.toThrow();
+    expect(() => new CachedJudge(judge, broken)).toThrow('broken.json');
     expect(calls).toHaveLength(0);
     expect(readFileSync(broken, 'utf8')).toBe('{broken');
   });

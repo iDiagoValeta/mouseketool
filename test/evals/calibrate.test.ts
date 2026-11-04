@@ -26,6 +26,13 @@ function fake(meets: (repo: string, first: string) => boolean, broken: string[] 
 }
 
 describe('calibrate', () => {
+  it('does not print an empty missing list', async () => {
+    const judge: Judge = { judge: async (repo) => ({ repo, meets: false, missing: [] }) };
+    const lines: string[] = [];
+    await calibrate([makeCase('c1', 'a/a')], judge, (l) => lines.push(l));
+    expect(lines[0]).toBe('c1 defined a/a does not meet');
+  });
+
   it('judges every known match against the defined and the vague requirements, one line each', async () => {
     const { judge, calls } = fake(() => true);
     const lines: string[] = [];

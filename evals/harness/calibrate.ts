@@ -23,7 +23,7 @@ export async function calibrate(
       for (const [version, mustHaves] of versions) {
         try {
           const judgment = await judge.judge(repo, mustHaves);
-          print(`${c.id} ${version} ${repo} ${judgment.meets ? 'meets' : `missing: ${judgment.missing.join('; ')}`}`);
+          print(`${c.id} ${version} ${repo} ${judgment.meets ? 'meets' : judgment.missing.length === 0 ? 'does not meet' : `missing: ${judgment.missing.join('; ')}`}`);
           meetsBoth &&= judgment.meets;
         } catch (error) {
           print(`${c.id} ${version} ${repo} JUDGE ERROR: ${(error as Error).message}`);

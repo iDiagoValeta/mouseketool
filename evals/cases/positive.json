@@ -58,7 +58,7 @@
       "text": "I'd like to build a way to keep my mail inbox rules in a file I can review, like code.",
       "mustHaves": [
         "Mail filters are described in a declarative configuration file",
-        "Applies the filters to the mail account from that file"
+        "The configuration file can be reviewed and versioned like code"
       ]
     },
     "defined": {
@@ -136,7 +136,7 @@
       "mustHaves": [
         "Checks whether domain names are available",
         "Generates many domain name variants from combinations of words",
-        "Shows results as they arrive"
+        "Shows the results quickly"
       ]
     },
     "defined": {
@@ -160,7 +160,7 @@
     "vague": {
       "text": "As a new parent I'd like to build an app on my own server to log feedings, sleep and nappy changes and spot patterns in them.",
       "mustHaves": [
-        "Self-hosted web application",
+        "Self-hosted application",
         "Records sleep, feedings and diaper changes for a baby",
         "Shows the recorded history so patterns can be seen"
       ]
@@ -286,7 +286,7 @@
   {
     "id": "pos-gps-track-video",
     "vague": {
-      "text": "I recorded a cycling trip with a GPS watch and I want to make a video of a dot moving across a map along the route.",
+      "text": "I want to build a tool that turns the GPS track of a ride into a video of a dot moving across a map.",
       "mustHaves": [
         "Creates a video from a GPS track file",
         "Draws the route on a map background"

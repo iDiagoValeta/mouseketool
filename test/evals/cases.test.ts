@@ -80,6 +80,8 @@ describe('positive cases', () => {
     '%s vague text states the intent to build or get a new tool',
     (_id, c) => {
       expect(c.vague.text).toMatch(/\b(build|make|write|create|start)\b/i);
+      // The verb must be about a tool, not a one-off job such as "make a video".
+      expect(c.vague.text).toMatch(/\b(build|make|write|create|start)\b(?!\s+(a|the|my)\s+(video|playlist|list)\b)/i);
     },
   );
 

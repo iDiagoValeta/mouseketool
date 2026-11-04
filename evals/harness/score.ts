@@ -67,14 +67,15 @@ export async function scoreRun(
   const recommended = (verdict?.repos ?? []).filter((repo) => outcome.logRepos.includes(repo));
 
   if (run.kind === 'negative') {
-    // "Build it, borrow a piece" passes. Reuse and adapt pass too, unless the recommended project really covers the case.
-    // No verdict line is a miss.
+    // "Build it, borrow a piece" passes. Reuse and adapt recommend a project for a need nothing should cover,
+    // so they miss, unless a recommended project does meet every requirement: then the case itself is wrong
+    // and it passes flagged, so the author replaces it. No verdict line is a miss.
     if (verdict === null) return { verdict: false };
     if (verdict.decision === 'build' || verdict.decision === 'base') return { verdict: true };
     const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
     const covered = judgments.some((j) => j.meets);
     return {
-      verdict: true,
+      verdict: covered,
       ...(covered ? { caseCovered: true } : {}),
       judgments,
       ...(judgeError === undefined ? {} : { judgeError }),
