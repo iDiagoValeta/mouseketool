@@ -152,3 +152,25 @@ export function meetsThresholds(summaries: PerHostSummary[]): boolean {
     )
   );
 }
+
+export type Report = { summaries: PerHostSummary[]; passed: boolean; needsCaseReview: string[] };
+
+/**
+ * A covered negative is a case a real project meets, so the case is wrong and gets replaced: whatever the
+ * thresholds say was measured on a broken set, so it is not a pass.
+ */
+export function buildReport(
+  results: { run: Run; score: Score }[],
+  state: { complete: boolean; filtered: boolean },
+): Report {
+  const summaries = summarize(results);
+  const needsCaseReview = [...new Set(results.filter((r) => r.score.caseCovered === true).map((r) => r.run.caseId))];
+  const passed = state.complete && !state.filtered && needsCaseReview.length === 0 && meetsThresholds(summaries);
+  return { summaries, passed, needsCaseReview };
+}
+
+/** The verdict word the CLI ends with. */
+export function finalLine(report: Pick<Report, 'passed' | 'needsCaseReview'>): string {
+  if (report.needsCaseReview.length > 0) return `FAIL: case review needed: ${report.needsCaseReview.join(', ')}`;
+  return report.passed ? 'PASS' : 'FAIL';
+}

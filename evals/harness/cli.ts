@@ -11,7 +11,7 @@ import { HOSTS, MODELS, planRuns, type Host, type Run } from './plan-runs.ts';
 import { ClaudeRunner } from './runners/claude-runner.ts';
 import { OpencodeRunner } from './runners/opencode-runner.ts';
 import type { Runner } from './runners/runner.ts';
-import { describeScore, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from './score.ts';
+import { buildReport, describeScore, finalLine, scoreRun, type Report, type Score } from './score.ts';
 import { createWorkspace, readRunLog, removeLiveWorkspaces, removeWorkspace } from './workspace.ts';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -97,11 +97,11 @@ const results: Result[] = [];
 const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${filtered ? '-partial' : ''}.json`);
 
 // Rewritten after every run so a crash keeps what already finished.
-function writeReport(complete: boolean): { summaries: PerHostSummary[]; passed: boolean } {
-  const summaries = summarize(results);
-  const passed = complete && !filtered && meetsThresholds(summaries);
-  writeFileSync(reportPath, JSON.stringify({ pass, complete, filtered, passed, summaries, results }, null, 2));
-  return { summaries, passed };
+function writeReport(complete: boolean): Report {
+  const report = buildReport(results, { complete, filtered });
+  const { passed, needsCaseReview, summaries } = report;
+  writeFileSync(reportPath, JSON.stringify({ pass, complete, filtered, passed, needsCaseReview, summaries, results }, null, 2));
+  return report;
 }
 
 for (const [index, run] of plan.entries()) {
@@ -136,7 +136,8 @@ for (const [index, run] of plan.entries()) {
   }
 }
 
-const { summaries, passed } = writeReport(true);
+const report = writeReport(true);
+const { summaries, passed } = report;
 for (const s of summaries) {
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   console.log(
@@ -148,5 +149,6 @@ if (filtered) {
   console.log(`PARTIAL: thresholds are not meaningful for a filtered run, so it is neither PASS nor FAIL. Report in ${reportPath}`);
   process.exit(PARTIAL);
 }
-console.log(`${passed ? 'PASS' : 'FAIL'}: report in ${reportPath}`);
+console.log(`Report in ${reportPath}`);
+console.log(finalLine(report));
 process.exit(passed ? 0 : 1);

@@ -6,7 +6,7 @@ import { readRunLog } from '../../evals/harness/workspace.ts';
 import { parseRepoName, type RepoName } from '../../src/domain/repo-name.ts';
 import type { Judge, Judgment } from '../../evals/harness/judge.ts';
 import { HOSTS, type Run } from '../../evals/harness/plan-runs.ts';
-import { describeScore, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from '../../evals/harness/score.ts';
+import { buildReport, describeScore, finalLine, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from '../../evals/harness/score.ts';
 
 function run(kind: Run['kind'], host: Run['host'] = 'claude-sonnet'): Run {
   return { caseId: 'c', kind, prompt: 'p', host };
@@ -295,5 +295,50 @@ describe('meetsThresholds', () => {
 
   it('fails with no summaries', () => {
     expect(meetsThresholds([])).toBe(false);
+  });
+});
+
+describe('buildReport', () => {
+  const passing = (kind: Run['kind'], host: Run['host'], caseId: string, score: Score = { verdict: true }) => ({
+    run: { ...run(kind, host), caseId },
+    score,
+  });
+  // One passing run of every kind on every host clears each threshold.
+  const clean = HOSTS.flatMap((host) => [
+    passing('positive-defined', host, 'p1'),
+    passing('positive-vague', host, 'p1'),
+    passing('negative', host, 'n1'),
+    passing('trigger', host, 't1'),
+  ]);
+  const done = { complete: true, filtered: false };
+
+  it('passes a complete, unfiltered run that meets the thresholds and covers no negative', () => {
+    expect(buildReport(clean, done)).toMatchObject({ passed: true, needsCaseReview: [] });
+  });
+
+  it('fails, naming the cases once each, when a negative was covered by a real project', () => {
+    const covered: Score = { verdict: true, caseCovered: true, judgments: [found('a/b')] };
+    const results = [...clean, passing('negative', 'claude-sonnet', 'n2', covered), passing('negative', 'opencode-deepseek-flash', 'n2', covered)];
+    const report = buildReport(results, done);
+    // The thresholds hold, so the covered negative alone fails the report.
+    expect(meetsThresholds(report.summaries)).toBe(true);
+    expect(report.passed).toBe(false);
+    expect(report.needsCaseReview).toEqual(['n2']);
+  });
+
+  it('is never a pass when incomplete or filtered, review or not', () => {
+    expect(buildReport(clean, { complete: false, filtered: false }).passed).toBe(false);
+    expect(buildReport(clean, { complete: true, filtered: true }).passed).toBe(false);
+  });
+});
+
+describe('finalLine', () => {
+  it('says PASS or FAIL when no case needs review', () => {
+    expect(finalLine({ passed: true, needsCaseReview: [] })).toBe('PASS');
+    expect(finalLine({ passed: false, needsCaseReview: [] })).toBe('FAIL');
+  });
+
+  it('names the cases that need review', () => {
+    expect(finalLine({ passed: false, needsCaseReview: ['neg-a', 'neg-b'] })).toBe('FAIL: case review needed: neg-a, neg-b');
   });
 });
