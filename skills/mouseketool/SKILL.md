@@ -1,6 +1,6 @@
 ---
 name: mouseketool
-description: Use FIRST, before you start writing a new tool, script, app, service or library for the user, and whenever the user wants one to exist that they have not built yet, whatever its size - a product idea, a wish ("I want something that...", "a way to...", "I'd like one command that..."), or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use when the user asks to change, fix or extend code that already exists in their project, or to perform one concrete action on their own files right now.
+description: Use FIRST, before you start writing a new reusable tool, app, service or library for the user, whenever they want one to exist that they have not built yet: a product idea, a wish ("I want something that...", "a way to...") or a requirements list. Searches GitHub for existing projects that already do it, checks them for real and gives a verdict - reuse, adapt, use as a base, or build from scratch. Do NOT use for a one-off script that performs an immediate action (rename these files, convert this folder), nor when the user asks to change, fix or extend code that already exists in their project.
 ---
 
 # mouseketool
@@ -9,7 +9,7 @@ Before building something new, find out whether it already exists. The tools `se
 
 ## 1. Gate
 
-Run the method when the user wants a reusable tool, app or service to exist, even a small one and even when phrased as a wish: that is exactly when people build what already exists. Do it before writing any file. Stop silently (no mention of this skill, no questions, no search) when the request changes, fixes or extends code already in their project, or asks for one concrete action on their own files right now. When in doubt between those two, do not trigger: noise on a small task is the failure to avoid.
+Run the method when the user wants a new reusable tool, app, service or library to exist (an idea, a wish, a requirements list), even when phrased as a wish: that is exactly when people build what already exists. Do it before writing any file. Stop silently (no mention of this skill, no questions, no search) when the request is a one-off script that performs an immediate action, or asks to change, fix or extend code already in their project. When in doubt between those, do not trigger: noise on a small task is the failure to avoid.
 
 ## 2. Read the input
 

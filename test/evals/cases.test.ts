@@ -42,6 +42,14 @@ describe('renderDefined', () => {
   });
 });
 
+describe('trigger cases', () => {
+  it('uses the spec example of a one-off script, which must not trigger the skill', () => {
+    expect(cases.trigger.find((c) => c.id === 'trg-rename-by-date')?.prompt).toBe(
+      'Write a script that renames all the photos in this folder to the date they were taken, like 2024-05-12_001.jpg.',
+    );
+  });
+});
+
 describe('positive cases', () => {
   it.each(cases.positive.map((c) => [c.id, c] as const))('%s is well formed', (_id, c) => {
     expect(c.knownMatches.length).toBeGreaterThan(0);

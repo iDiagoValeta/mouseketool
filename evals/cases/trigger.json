@@ -5,7 +5,7 @@
   },
   {
     "id": "trg-rename-by-date",
-    "prompt": "Rename all the photos in this folder to the date they were taken, like 2024-05-12_001.jpg."
+    "prompt": "Write a script that renames all the photos in this folder to the date they were taken, like 2024-05-12_001.jpg."
   },
   {
     "id": "trg-fix-failing-test",
