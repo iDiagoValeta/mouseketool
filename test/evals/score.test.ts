@@ -337,7 +337,7 @@ describe('scoreRun, partial', () => {
 
   it('needs the foundation requirements', async () => {
     const { judge } = judgeByList([], []);
-    const { foundationMustHaves: _omit, ...without } = partialRun();
+    const without: Run = { caseId: 'p', kind: 'partial', prompt: 'p', mustHaves, host: 'claude-sonnet' };
     await expect(scoreRun(without, outcome('Verdict: base a/a', ['a/a']), mustHaves, judge)).rejects.toThrow();
   });
 });
