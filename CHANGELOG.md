@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.0...v1.0.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* let release-please read its config so plugin.json is bumped ([#15](https://github.com/iDiagoValeta/mouseketool/issues/15)) ([3e454f0](https://github.com/iDiagoValeta/mouseketool/commit/3e454f09396fad88d5588d0211da79fb0f279e8c)), closes [#14](https://github.com/iDiagoValeta/mouseketool/issues/14)
+
 ## 1.0.0 (2026-11-04)
 
 

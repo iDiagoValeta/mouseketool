@@ -1,11 +1,13 @@
 {
   "name": "mouseketool",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
   "mcpServers": {
     "mouseketool": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/dist/server.mjs"
+      ]
     }
   }
 }
