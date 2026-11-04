@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.2...v1.0.3) (2026-11-04)
+
+
+### Bug Fixes
+
+* **skill:** quote the description so the frontmatter is valid YAML ([#23](https://github.com/iDiagoValeta/mouseketool/issues/23)) ([6b50bcd](https://github.com/iDiagoValeta/mouseketool/commit/6b50bcdea756d052d3cab7898e096e40b5c032c5)), closes [#22](https://github.com/iDiagoValeta/mouseketool/issues/22)
+
 ## [1.0.2](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.1...v1.0.2) (2026-11-04)
 
 
