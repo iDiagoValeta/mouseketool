@@ -123,15 +123,19 @@ describe('ClaudeRunner', () => {
     expect(result.finalText).toBe(parseClaudeOutput(claudeFixture));
     const [file, args, options] = calls[0]!;
     expect(file).toBe('claude');
-    expect(args.slice(0, 2)).toEqual(['-p', 'an idea']);
-    expect(args).toContain('--strict-mcp-config');
-    expect(args).toContain('--no-session-persistence');
-    expect(args[args.indexOf('--model') + 1]).toBe('claude-sonnet-5-5');
-    expect(args[args.indexOf('--setting-sources') + 1]).toBe('project');
-    expect(args[args.indexOf('--mcp-config') + 1]).toBe('/ws/mcp.json');
-    expect(args[args.indexOf('--allowedTools') + 1]).toBe(
+    // `--tools Skill` removes Read, Glob, Grep, Bash and the rest: `--allowedTools` only pre-approves.
+    expect(args).toEqual([
+      '-p', 'an idea',
+      '--model', 'claude-sonnet-5-5',
+      '--output-format', 'json',
+      '--setting-sources', 'project',
+      '--strict-mcp-config',
+      '--no-session-persistence',
+      '--mcp-config', '/ws/mcp.json',
+      '--tools', 'Skill',
+      '--allowedTools',
       'mcp__mouseketool__search_repositories,mcp__mouseketool__inspect_repository,mcp__mouseketool__read_repository_file,Skill',
-    );
+    ]);
     expect(options.cwd).toBe('/ws');
   });
 });

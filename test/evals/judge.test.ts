@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseRepoName, type RepoName } from '../../src/domain/repo-name.ts';
-import { CachedJudge, ClaudeJudge, parseJudgment, type Judge, type Judgment } from '../../evals/harness/judge.ts';
+import { CachedJudge, ClaudeJudge, judgePrompt, parseJudgment, type Judge, type Judgment } from '../../evals/harness/judge.ts';
 import type { Exec } from '../../evals/harness/runners/runner.ts';
 
 const repo = parseRepoName('foo/bar');
@@ -73,15 +73,19 @@ describe('ClaudeJudge', () => {
     expect(judgment).toEqual({ repo, meets: true, missing: [] });
     const [file, args, options] = calls[0]!;
     expect(file).toBe('claude');
-    expect(args[args.indexOf('--model') + 1]).toBe('claude-sonnet-5-5');
-    expect(args[args.indexOf('--setting-sources') + 1]).toBe('project');
-    expect(args[args.indexOf('--output-format') + 1]).toBe('json');
-    expect(args).toContain('--strict-mcp-config');
-    expect(args).toContain('--no-session-persistence');
-    expect(args[args.indexOf('--mcp-config') + 1]).toBe(join(options.cwd, 'mcp.json'));
-    expect(args[args.indexOf('--allowedTools') + 1]).toBe(
+    expect(args).toEqual([
+      '-p', judgePrompt(repo, mustHaves),
+      '--model', 'claude-sonnet-5-5',
+      '--output-format', 'json',
+      '--setting-sources', 'project',
+      '--strict-mcp-config',
+      '--no-session-persistence',
+      '--mcp-config', join(options.cwd, 'mcp.json'),
+      // An empty list: no built-in tool at all, so the judge cannot read the workspace.
+      '--tools', '',
+      '--allowedTools',
       'mcp__mouseketool__search_repositories,mcp__mouseketool__inspect_repository,mcp__mouseketool__read_repository_file',
-    );
+    ]);
     expect(options.env).toEqual({ PATH: '/usr/bin', HOME: '/home/author' });
   });
 
