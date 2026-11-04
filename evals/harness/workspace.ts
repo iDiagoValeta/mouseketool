@@ -8,6 +8,9 @@ export type Workspace = { dir: string; runLog: string };
 
 export const WORKSPACE_ROOT = join(tmpdir(), 'mouseketool-eval');
 
+/** Directories created and not yet removed: the ones holding the token that an interrupt would leave on disk. */
+const liveWorkspaces = new Set<string>();
+
 /**
  * A fresh directory holding the skill (unless `options.skill` is false) and the host's MCP config, and nothing else:
  * the host must find the mouseketool skill and the server, not the author's own setup.
@@ -24,6 +27,7 @@ export function createWorkspace(
 ): Workspace {
   const dir = join(base, `${run.caseId}-${run.kind}`);
   rmSync(dir, { recursive: true, force: true });
+  liveWorkspaces.add(dir);
   // The MCP config holds the GitHub token, so only the author may read the workspace.
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 
@@ -78,6 +82,13 @@ export function createWorkspace(
 
 export function removeWorkspace(workspace: Workspace): void {
   rmSync(workspace.dir, { recursive: true, force: true });
+  liveWorkspaces.delete(workspace.dir);
+}
+
+/** For SIGINT and SIGTERM, where the `finally` blocks that remove workspaces never run. */
+export function removeLiveWorkspaces(): void {
+  for (const dir of liveWorkspaces) rmSync(dir, { recursive: true, force: true });
+  liveWorkspaces.clear();
 }
 
 /**

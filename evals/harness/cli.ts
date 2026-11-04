@@ -12,7 +12,7 @@ import { ClaudeRunner } from './runners/claude-runner.ts';
 import { OpencodeRunner } from './runners/opencode-runner.ts';
 import type { Runner } from './runners/runner.ts';
 import { describeScore, meetsThresholds, scoreRun, summarize, type PerHostSummary, type Score } from './score.ts';
-import { createWorkspace, readRunLog, removeWorkspace } from './workspace.ts';
+import { createWorkspace, readRunLog, removeLiveWorkspaces, removeWorkspace } from './workspace.ts';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -42,6 +42,14 @@ if (!calibrating && (!Number.isInteger(pass) || pass < 0)) {
 if (values.host !== undefined && !(HOSTS as readonly string[]).includes(values.host)) {
   console.error(`Unknown host "${values.host}". Hosts: ${HOSTS.join(', ')}`);
   process.exit(USAGE);
+}
+
+// An interrupt skips the `finally` blocks, and the workspaces of the host and the judge hold the GitHub token.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    removeLiveWorkspaces();
+    process.exit(130);
+  });
 }
 
 // The runs use dist/server.mjs, so a stale build would test the wrong server.

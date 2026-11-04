@@ -1,9 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Run } from '../../evals/harness/plan-runs.ts';
-import { createWorkspace, readRunLog, removeWorkspace } from '../../evals/harness/workspace.ts';
+import { createWorkspace, readRunLog, removeLiveWorkspaces, removeWorkspace } from '../../evals/harness/workspace.ts';
 
 const TOKEN = 'test-token-value';
 let base: string;
@@ -80,6 +80,31 @@ describe('createWorkspace', () => {
     const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
     removeWorkspace(ws);
     expect(existsSync(ws.dir)).toBe(false);
+  });
+});
+
+describe('removeLiveWorkspaces', () => {
+  it('removes every workspace that was created and not yet removed, so an interrupt leaves no token behind', () => {
+    const claude = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    const opencode = createWorkspace({ ...run('opencode-deepseek-flash'), caseId: 'case-2' }, process.cwd(), TOKEN, base);
+    const finished = createWorkspace({ ...run('claude-sonnet'), caseId: 'case-3' }, process.cwd(), TOKEN, base);
+    removeWorkspace(finished);
+    // Recreated by hand: a workspace that was already removed must not be touched again.
+    mkdirSync(finished.dir);
+
+    removeLiveWorkspaces();
+
+    expect(existsSync(claude.dir)).toBe(false);
+    expect(existsSync(opencode.dir)).toBe(false);
+    expect(existsSync(finished.dir)).toBe(true);
+  });
+
+  it('has nothing left to remove afterwards', () => {
+    const ws = createWorkspace(run('claude-sonnet'), process.cwd(), TOKEN, base);
+    removeLiveWorkspaces();
+    mkdirSync(ws.dir);
+    removeLiveWorkspaces();
+    expect(existsSync(ws.dir)).toBe(true);
   });
 });
 
