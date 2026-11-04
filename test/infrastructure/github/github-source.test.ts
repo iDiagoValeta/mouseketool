@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SourceError, SourceRateLimitedError } from '../../../src/application/ports/repository-source.ts';
 import {
   GitHubError,
   GitHubSource,
@@ -138,6 +139,7 @@ describe('GitHubSource.search quota', () => {
     const error = await source.search('b', 5).catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(RateLimitedError);
+    expect(error).toBeInstanceOf(SourceRateLimitedError);
     expect((error as RateLimitedError).resetAt).toEqual(new Date((NOW / 1000 + 61) * 1000));
     expect(seen).toHaveLength(1);
     expect(clock.sleeps).toEqual([]);
@@ -188,6 +190,7 @@ describe('a failing fetch', () => {
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(GitHubError);
+    expect(error).toBeInstanceOf(SourceError);
     expect((error as Error).message).toContain('/repos/foo/bar/readme');
     expect((error as Error).message).not.toContain(sentinel);
     expect((error as Error).cause).toBeUndefined();

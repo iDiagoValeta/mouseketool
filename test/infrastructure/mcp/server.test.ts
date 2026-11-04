@@ -1,9 +1,12 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { RepositorySource } from '../../../src/application/ports/repository-source.ts';
+import {
+  SourceError,
+  SourceRateLimitedError,
+  type RepositorySource,
+} from '../../../src/application/ports/repository-source.ts';
 import type { Candidate } from '../../../src/domain/candidate.ts';
-import { GitHubError, RateLimitedError } from '../../../src/infrastructure/github/github-source.ts';
 import { createMcpServer } from '../../../src/infrastructure/mcp/server.ts';
 import { InMemorySource } from '../../doubles/in-memory-source.ts';
 import { MemoryRunLog } from '../../doubles/memory-run-log.ts';
@@ -177,22 +180,20 @@ describe('createMcpServer', () => {
     expect(textOf(many)).toBe('At most 15 queries per call, got 16');
   });
 
-  it('returns rate limit and GitHub errors with their message', async () => {
+  it('returns the rate limit and source errors of any source with their message', async () => {
     const resetAt = new Date('2026-11-03T00:05:00Z');
 
     const limited = await (
-      await connect(sourceFailingWith(new RateLimitedError(resetAt)))
+      await connect(sourceFailingWith(new SourceRateLimitedError(resetAt, 'Rate limit reached; it resets at 2026-11-03T00:05:00.000Z')))
     ).callTool({ name: 'inspect_repository', arguments: { repo: 'foo/bar' } });
     const broken = await (
-      await connect(sourceFailingWith(new GitHubError(500, '/repos/foo/bar')))
+      await connect(sourceFailingWith(new SourceError('The source failed with HTTP 500 for /repos/foo/bar')))
     ).callTool({ name: 'read_repository_file', arguments: { repo: 'foo/bar', path: 'a' } });
 
     expect(limited.isError).toBe(true);
-    expect(textOf(limited)).toBe(
-      'GitHub rate limit reached; it resets at 2026-11-03T00:05:00.000Z',
-    );
+    expect(textOf(limited)).toBe('Rate limit reached; it resets at 2026-11-03T00:05:00.000Z');
     expect(broken.isError).toBe(true);
-    expect(textOf(broken)).toBe('GitHub request failed with HTTP 500 for /repos/foo/bar');
+    expect(textOf(broken)).toBe('The source failed with HTTP 500 for /repos/foo/bar');
   });
 
   it('hides the text of an unexpected error', async () => {

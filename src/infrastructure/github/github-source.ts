@@ -1,6 +1,8 @@
-import type {
-  FileContent,
-  RepositorySource,
+import {
+  SourceError,
+  SourceRateLimitedError,
+  type FileContent,
+  type RepositorySource,
 } from '../../application/ports/repository-source.ts';
 import type { Candidate } from '../../domain/candidate.ts';
 import type { ActivityFacts } from '../../domain/health.ts';
@@ -18,7 +20,7 @@ const MAX_LIMIT_WAIT_MS = 60_000;
 const PAGE = 100;
 const BINARY_SNIFF_BYTES = 8_000;
 
-export class GitHubError extends Error {
+export class GitHubError extends SourceError {
   override name = 'GitHubError';
 
   /** `status` is null when no response came back at all. */
@@ -31,11 +33,11 @@ export class GitHubError extends Error {
   }
 }
 
-export class RateLimitedError extends Error {
+export class RateLimitedError extends SourceRateLimitedError {
   override name = 'RateLimitedError';
 
-  constructor(readonly resetAt: Date) {
-    super(`GitHub rate limit reached; it resets at ${resetAt.toISOString()}`);
+  constructor(resetAt: Date) {
+    super(resetAt, `GitHub rate limit reached; it resets at ${resetAt.toISOString()}`);
   }
 }
 

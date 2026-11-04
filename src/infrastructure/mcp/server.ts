@@ -2,13 +2,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { inspectRepository } from '../../application/inspect-repository.ts';
-import type { RepositorySource } from '../../application/ports/repository-source.ts';
+import {
+  SourceError,
+  SourceRateLimitedError,
+  type RepositorySource,
+} from '../../application/ports/repository-source.ts';
 import type { RunLog } from '../../application/ports/run-log.ts';
 import { readRepositoryFile } from '../../application/read-repository-file.ts';
 import { searchCandidates, TooManyQueriesError } from '../../application/search-candidates.ts';
 import { InvalidRepoNameError } from '../../domain/repo-name.ts';
 import pkg from '../../../package.json' with { type: 'json' };
-import { GitHubError, RateLimitedError } from '../github/github-source.ts';
 
 const SEARCH_DESCRIPTION =
   'Searches GitHub for existing projects. Takes 1 to 15 varied queries in one call: ' +
@@ -30,7 +33,7 @@ const READ_FILE_DESCRIPTION =
   'GitHub URL; `path` is relative to the repository root.';
 
 // Errors a caller can act on: their message is safe to show and says what to change.
-const REPORTABLE = [InvalidRepoNameError, TooManyQueriesError, RateLimitedError, GitHubError];
+const REPORTABLE = [InvalidRepoNameError, TooManyQueriesError, SourceRateLimitedError, SourceError];
 
 export function createMcpServer(deps: {
   source: RepositorySource;
