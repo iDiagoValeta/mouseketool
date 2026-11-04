@@ -248,6 +248,8 @@ Pass 0 on 2026-11-04 with the final code, 52 runs, both hosts within every thres
 
 In three cases the host recommended a mature project other than the one the case was built on, and the judge confirmed it meets the must-haves: `time4tea/gopro-dashboard-overlay` for GPS track videos, `abhixdd/uptimekit-cli` for terminal site monitoring and `exiftool/exiftool` for stripping image metadata. Sonnet's vague misses recommended the right project but had not found it through the search, so the eval counts them as answers from memory. Its defined miss recommended a domain checker that cannot print only the available names, a must-have of that case.
 
+Every run, with the host's full answer and the judge's verdicts, is in [`evals/results/2026-11-04/`](evals/results/2026-11-04/README.md).
+
 ## Limitations
 
 - GitHub is the only source. Package registries such as npm or PyPI are not searched yet.
