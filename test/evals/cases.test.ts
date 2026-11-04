@@ -130,11 +130,9 @@ describe('negative cases', () => {
 
 describe('partial cases', () => {
   // Words of a foundation's name that the brief's text keeps on purpose, because they only name the domain and
-  // do not point at the project: "story" is inside "history" (git-story), and "recipes" is what the idea is about
-  // (tandoorrecipes/recipes). The leak test stays strict for every other word.
+  // do not point at the project: "story" is inside "history" (git-story). The leak test stays strict for every other word.
   const domainWords: Record<string, string[]> = {
     'partial-git-history-narrated-video': ['story'],
-    'partial-fridge-photo-meal-plan': ['recipes'],
   };
 
   it.each(cases.partial.map((c) => [c.id, c] as const))('%s is well formed', (_id, c) => {

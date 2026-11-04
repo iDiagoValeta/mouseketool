@@ -41,7 +41,7 @@
   },
   {
     "id": "partial-fridge-photo-meal-plan",
-    "text": "I want to build an app where I take a photo of my fridge and it plans the week's meals using only recipes from my own collection.",
+    "text": "I want to build an app where I take a photo of my fridge and it plans the week's meals using only dishes from my own collection.",
     "mustHaves": [
       "Recognises the ingredients in a photo of a fridge",
       "Plans a week of meals",
