@@ -3,6 +3,7 @@
 [![CI](https://github.com/iDiagoValeta/mouseketool/actions/workflows/ci.yml/badge.svg)](https://github.com/iDiagoValeta/mouseketool/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node 24+](https://img.shields.io/badge/node-%3E%3D24-339933)
+[![M8ven Score](https://m8ven.ai/badge/mcp/idiagovaleta-mouseketool-1srau9?v=1c4b1a35dbc979d045ad0af26529cfc1)](https://m8ven.ai/mcp/idiagovaleta-mouseketool-1srau9?s=readme)
 
 **Before you build something new, find out whether it already exists.**
 
