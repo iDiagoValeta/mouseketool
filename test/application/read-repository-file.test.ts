@@ -76,12 +76,27 @@ describe('readRepositoryFile', () => {
     expect(await readRepositoryFile(deps, { repo: 'foo/bar', path: 'edge.txt' })).toEqual({ text });
   });
 
-  it('normalizes the repo and logs it, also when the file is missing', async () => {
-    const { deps, log } = setup({});
+  it('normalizes the repo and logs it when the file comes back as text', async () => {
+    const { deps, log } = setup({ x: { kind: 'text', text: 'code' } });
 
     await readRepositoryFile(deps, { repo: 'https://github.com/Foo/Bar.git', path: 'x' });
 
     expect(log.entries).toEqual([{ tool: 'read_repository_file', repos: ['foo/bar'] }]);
+  });
+
+  it('logs no repo when nothing was read: a missing or binary file, or a directory', async () => {
+    const { deps, log } = setup({
+      'logo.png': { kind: 'binary' },
+      src: { kind: 'directory', entries: ['a.ts'] },
+    });
+
+    for (const path of ['nope.md', 'logo.png', 'src']) {
+      await readRepositoryFile(deps, { repo: 'foo/bar', path });
+    }
+
+    expect(log.entries).toEqual(
+      Array.from({ length: 3 }, () => ({ tool: 'read_repository_file', repos: [] })),
+    );
   });
 
   it('rejects input that is not a repo', async () => {

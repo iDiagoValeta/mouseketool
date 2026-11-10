@@ -55,15 +55,15 @@ The token is sent only to `api.github.com`. It is never logged and never appears
 
 - **20 positive ideas**, built on real projects, each in a vague and a defined version;
 - **6 ideas covered only in part**, where the right answer is `base` with a mature project;
-- **6 invented ideas**, where the right answer is to build;
+- **6 invented ideas**, where the right answer is to build, from scratch or on a mature foundation (`base`) that the run found and read;
 - **6 small tasks**, where the skill must stay silent.
 
 A recommendation counts as a hit only if all three hold:
 - the project came from that run's search, not from the model's memory;
-- the host read its code;
+- the host read at least one file of that project;
 - a separate judge confirms it meets every must-have.
 
-Any project that meets them counts, not only the one a case was built on.
+Any project that meets them counts, not only the one a case was built on. The verdict counts only when it has the exact format of the skill on the first line of the answer.
 
 ```bash
 pnpm eval --calibrate   # check the judge and the cases first
