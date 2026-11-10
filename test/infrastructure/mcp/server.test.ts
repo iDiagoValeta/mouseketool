@@ -196,10 +196,22 @@ describe('createMcpServer', () => {
       arguments: { queries: Array.from({ length: 16 }, (_, i) => `q${i}`) },
     });
 
+    // The schema rejects them before the use case runs, naming the bound that was broken.
     expect(none.isError).toBe(true);
-    expect(textOf(none)).toBe('At least 1 query is required');
+    expect(textOf(none)).toMatch(/>=1 items/);
     expect(many.isError).toBe(true);
-    expect(textOf(many)).toBe('At most 15 queries per call, got 16');
+    expect(textOf(many)).toMatch(/<=15 items/);
+  });
+
+  it('declares every tool read-only and open-world, and the query bounds in the search schema', async () => {
+    const client = await connect(new InMemorySource());
+    const { tools } = await client.listTools();
+
+    for (const tool of tools) {
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true });
+    }
+    const search = tools.find((tool) => tool.name === 'search_repositories');
+    expect(search?.inputSchema.properties?.['queries']).toMatchObject({ minItems: 1, maxItems: 15 });
   });
 
   it('returns the rate limit and source errors of any source with their message', async () => {
