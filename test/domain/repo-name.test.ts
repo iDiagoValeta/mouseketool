@@ -9,11 +9,28 @@ describe('parseRepoName', () => {
     ['github.com/foo/bar', 'foo/bar'],
     ['  foo/bar  ', 'foo/bar'],
     ['Foo/.github', 'foo/.github'],
+    ['https://github.com/foo/bar/tree/main/src', 'foo/bar'],
+    ['https://github.com/foo/bar/blob/main/README.md#usage', 'foo/bar'],
+    ['https://www.github.com/foo/bar#readme', 'foo/bar'],
+    ['github.com/foo/bar?tab=readme-ov-file', 'foo/bar'],
+    ['https://github.com/foo/bar.git', 'foo/bar'],
   ])('normalises %s to %s', (input, expected) => {
     expect(parseRepoName(input)).toBe(expected);
   });
 
-  it.each(['foo', 'foo/bar/baz', '', 'foo/', '/bar', 'foo/bar baz', 'foo/..', 'foo/.'])(
+  it.each([
+    'foo',
+    'foo/bar/baz',
+    '',
+    'foo/',
+    '/bar',
+    'foo/bar baz',
+    'foo/..',
+    'foo/.',
+    'https://github.com/foo',
+    'https://github.com/foo/..',
+    'https://gitlab.com/foo/bar',
+  ])(
     'rejects %j',
     (input) => {
       expect(() => parseRepoName(input)).toThrow(InvalidRepoNameError);
