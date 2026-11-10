@@ -31,4 +31,8 @@ jobs:
       # plugin runs no build, so it must match the source it was built from.
       - run: pnpm build
       - name: Committed bundle matches the source
-        run: git diff --exit-code -- dist/ || { echo "::error::dist/ is stale: run pnpm build and commit it"; exit 1; }
+        run: |
+          if ! git diff --exit-code -- dist/; then
+            echo "::error::dist/ does not match the source. Run pnpm build and commit dist/."
+            exit 1
+          fi
