@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadCases, renderDefined } from '../../evals/cases/schema.ts';
-import { HOSTS, MODELS, planRuns } from '../../evals/harness/plan-runs.ts';
+import { HOSTS, MODELS, planRuns, planSpotRuns } from '../../evals/harness/plan-runs.ts';
 
 const cases = loadCases('evals/cases');
 
@@ -88,10 +88,30 @@ describe('planRuns', () => {
     expect(runs.filter((r) => r.kind !== 'partial').every((r) => r.foundationMustHaves === undefined)).toBe(true);
   });
 
-  it('names the models of the two hosts', () => {
+  it('names the models of the two hosts and of the spot host', () => {
     expect(MODELS).toEqual({
       'claude-sonnet': 'claude-sonnet-5-5',
       'opencode-deepseek-flash': 'deepseek/deepseek-flash',
+      'claude-opus': 'claude-opus-5-5',
     });
+  });
+
+  it('never puts the spot host in the rotation of a full pass', () => {
+    for (const pass of [0, 1, 2, 3, 4]) {
+      expect(planRuns(cases, pass).some((run) => run.host === 'claude-opus')).toBe(false);
+    }
+  });
+
+  it('runs only the named cases on the spot host, both inputs of a positive one', () => {
+    const partialId = cases.partial[0]!.id;
+    const positiveId = cases.positive[0]!.id;
+    const runs = planSpotRuns(cases, 'claude-opus', [partialId, positiveId]);
+
+    expect(runs.map((run) => [run.caseId, run.kind])).toEqual([
+      [positiveId, 'positive-vague'],
+      [positiveId, 'positive-defined'],
+      [partialId, 'partial'],
+    ]);
+    expect(runs.every((run) => run.host === 'claude-opus')).toBe(true);
   });
 });

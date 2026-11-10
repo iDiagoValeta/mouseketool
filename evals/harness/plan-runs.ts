@@ -1,11 +1,16 @@
 import { renderDefined, type Cases } from '../cases/schema.ts';
 
+/** The hosts a full pass rotates its runs across. */
 export const HOSTS = ['claude-sonnet', 'opencode-deepseek-flash'] as const;
-export type Host = (typeof HOSTS)[number];
+/** Hosts outside the rotation: they run only the cases named with --only, to try a costlier model on a few. */
+export const SPOT_HOSTS = ['claude-opus'] as const;
+export type SpotHost = (typeof SPOT_HOSTS)[number];
+export type Host = (typeof HOSTS)[number] | SpotHost;
 
 export const MODELS: Record<Host, string> = {
   'claude-sonnet': 'claude-sonnet-5-5',
   'opencode-deepseek-flash': 'deepseek/deepseek-flash',
+  'claude-opus': 'claude-opus-5-5',
 };
 
 export type RunKind = 'positive-vague' | 'positive-defined' | 'negative' | 'trigger' | 'partial';
@@ -51,4 +56,11 @@ export function planRuns(cases: Cases, pass: number): Run[] {
     })),
   ];
   return prompts.map((run, i) => ({ ...run, host: (i + pass) % 5 < 3 ? 'claude-sonnet' : 'opencode-deepseek-flash' }));
+}
+
+/** Every run of the named cases, all on a spot host. A positive case has two runs, its vague and defined inputs. */
+export function planSpotRuns(cases: Cases, host: SpotHost, caseIds: string[]): Run[] {
+  return planRuns(cases, 0)
+    .filter((run) => caseIds.includes(run.caseId))
+    .map((run) => ({ ...run, host }));
 }
