@@ -2,7 +2,12 @@ import type { Candidate } from '../../domain/candidate.ts';
 import type { ActivityFacts } from '../../domain/health.ts';
 import type { RepoName } from '../../domain/repo-name.ts';
 
-export type FileContent = { kind: 'text'; text: string } | { kind: 'binary' } | { kind: 'missing' };
+export type FileContent =
+  | { kind: 'text'; text: string }
+  | { kind: 'binary' }
+  | { kind: 'missing' }
+  // A directory's entries, with a trailing `/` on each subdirectory.
+  | { kind: 'directory'; entries: string[] };
 
 /** A source could not answer. The message is safe to show: it names what failed, never a credential or a query. */
 export class SourceError extends Error {

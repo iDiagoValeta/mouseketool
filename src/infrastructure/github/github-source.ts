@@ -148,8 +148,7 @@ export class GitHubSource implements RepositorySource {
     if (response.status === 404) {
       return [];
     }
-    const entries = (await response.json()) as { name: string; type: string }[];
-    return entries.map((entry) => (entry.type === 'dir' ? `${entry.name}/` : entry.name));
+    return ((await response.json()) as ListingJson).map(toEntry);
   }
 
   async file(name: RepoName, path: string): Promise<FileContent> {
@@ -166,6 +165,12 @@ export class GitHubSource implements RepositorySource {
     });
     if (response.status === 404) {
       return { kind: 'missing' };
+    }
+
+    // A directory answers with its JSON listing even when the raw media type is asked for; a
+    // file comes back as raw media.
+    if (response.headers.get('content-type')?.startsWith('application/json') === true) {
+      return { kind: 'directory', entries: ((await response.json()) as ListingJson).map(toEntry) };
     }
 
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -298,6 +303,12 @@ export class GitHubSource implements RepositorySource {
     }
     return { resetAt: new Date(this.clock.now() + DEFAULT_LIMIT_WAIT_MS) };
   }
+}
+
+type ListingJson = { name: string; type: string }[];
+
+function toEntry(entry: ListingJson[number]): string {
+  return entry.type === 'dir' ? `${entry.name}/` : entry.name;
 }
 
 function toCandidate(raw: RepoJson): Candidate {

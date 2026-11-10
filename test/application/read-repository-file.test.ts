@@ -42,6 +42,16 @@ describe('readRepositoryFile', () => {
     });
   });
 
+  it('lists a directory with reason directory', async () => {
+    const { deps } = setup({ src: { kind: 'directory', entries: ['a.ts', 'lib/'] } });
+
+    expect(await readRepositoryFile(deps, { repo: 'foo/bar', path: 'src' })).toEqual({
+      text: null,
+      reason: 'directory',
+      entries: ['a.ts', 'lib/'],
+    });
+  });
+
   it('explains an absent file with reason missing', async () => {
     const { deps } = setup({});
 

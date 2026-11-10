@@ -31,8 +31,9 @@ const INSPECT_DESCRIPTION =
 const READ_FILE_DESCRIPTION =
   'Reads one file from a GitHub repository, for example a manifest or a docs page, to check ' +
   'what a project really does. Returns JSON: { text } with the content (truncated when long), ' +
-  'or { text: null, reason } when the file is binary or missing. `repo` is "owner/name" or a ' +
-  'GitHub URL; `path` is relative to the repository root.';
+  'or { text: null, reason } when the file is binary or missing. A directory path returns ' +
+  '{ text: null, reason: "directory", entries }, with a trailing "/" on subdirectories. ' +
+  '`repo` is "owner/name" or a GitHub URL; `path` is relative to the repository root.';
 
 // Errors a caller can act on: their message is safe to show and says what to change.
 const REPORTABLE = [InvalidRepoNameError, TooManyQueriesError, SourceRateLimitedError, SourceError];

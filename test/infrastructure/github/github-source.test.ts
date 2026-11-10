@@ -311,6 +311,31 @@ describe('GitHubSource.file', () => {
     expect(seen[0]?.headers.get('accept')).toBe('application/vnd.github.raw');
   });
 
+  it('lists a directory, which GitHub answers with JSON even when raw is asked for', async () => {
+    const { source } = setup({
+      '/repos/foo/bar/contents/src': {
+        json: [
+          { name: 'a.ts', type: 'file', sha: 'x', _links: {} },
+          { name: 'lib', type: 'dir', sha: 'y', _links: {} },
+        ],
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+      },
+    });
+
+    expect(await source.file('foo/bar', 'src')).toEqual({ kind: 'directory', entries: ['a.ts', 'lib/'] });
+  });
+
+  it('returns a JSON file as text, since GitHub sends it as raw media', async () => {
+    const { source } = setup({
+      '/repos/foo/bar/contents/package.json': {
+        body: '[1, 2]',
+        headers: { 'content-type': 'application/vnd.github.raw; charset=utf-8' },
+      },
+    });
+
+    expect(await source.file('foo/bar', 'package.json')).toEqual({ kind: 'text', text: '[1, 2]' });
+  });
+
   it('returns missing on 404', async () => {
     const { source } = setup({ '/repos/foo/bar/contents/nope.txt': { status: 404 } });
 
