@@ -1,0 +1,276 @@
+{
+  "pass": 1,
+  "complete": true,
+  "filtered": true,
+  "passed": false,
+  "needsCaseReview": [],
+  "summaries": [
+    {
+      "host": "claude-opus",
+      "hitDefined": 1,
+      "hitVague": 1,
+      "negatives": 1,
+      "triggers": 1,
+      "partials": 0.5
+    }
+  ],
+  "results": [
+    {
+      "run": {
+        "caseId": "neg-choir-practice-tracker",
+        "kind": "negative",
+        "prompt": "Must have:\n- Self-hosted web application for an amateur choir\n- Imports a score as MusicXML and generates one practice audio file per voice part, with that part louder than the others\n- Each member has an account and is assigned a voice part\n- Logs which pieces each member practised and for how long\n- Shows the choir director, per piece, which members have not practised yet\nNice to have:\n- Adjustable tempo for the practice audio\n- Reminder emails before rehearsals",
+        "mustHaves": [
+          "Self-hosted web application for an amateur choir",
+          "Imports a score as MusicXML and generates one practice audio file per voice part, with that part louder than the others",
+          "Each member has an account and is assigned a voice part",
+          "Logs which pieces each member practised and for how long",
+          "Shows the choir director, per piece, which members have not practised yet"
+        ],
+        "host": "claude-opus"
+      },
+      "score": {
+        "verdict": true
+      },
+      "finalText": "Verdict: build\n\nI didn't find any project that does all five must-haves. The closest ones are new single-maintainer apps with 0 stars, and each is missing a big piece, so building on them would mean adopting someone else's half-finished design. Build your own, and use **cuthbertlab/music21** to turn the MusicXML into per-part audio.\n\n**cuthbertlab/music21** (Python, BSD-3, 2.6k stars, 119 contributors, release v10.5.2 in October 2026, actively maintained)\n- ✅ Reads MusicXML, splits it into parts and writes MIDI. Confirmed in `music21/midi/translate.py`: each note's MIDI velocity is set from its volume (`me1.velocity = int(round(n.volume.cachedRealized * 127))`). That means you can make one part louder per file, then render to audio with a SoundFont synth such as FluidSynth. You can change the tempo by changing the score's tempo before export.\n- ❌ It's a library, not an app. Accounts, practice logging, the director's view and emails are all yours to build.\n\n**charlesekkel/prova** (SvelteKit + Supabase, MIT, 0 stars, 1 contributor, started October 2026)\n- ✅ Has choir accounts (Google sign-in, admin approval), voice parts and pieces. Confirmed in `supabase/migrations/`: `practice_tracks` links a track to a voice part with the kind `part-predominant`.\n- ❌ Tracks are MP3/M4A files you upload by hand; I found no code that generates audio from MusicXML. The migration list has no practice-log table and no \"who hasn't practised\" view. It deploys to Cloudflare Pages + Supabase rather than one self-hosted server. It's weeks old with one maintainer.\n\n**eerovil/stemmanauhat-cf** (TypeScript, MIT, 0 stars, very active, used by real choirs)\n- ✅ Plays a MusicXML score in the browser with your own part loud, the others quieter, and an adjustable tempo. Confirmed in `src/worker/events.ts`: it records each listen with its length, song and part, linked to the signed-in user.\n- ❌ Runs only on Cloudflare (Workers/D1/R2), so it isn't self-hosted in the usual sense. It mixes live in the browser instead of making audio files. Songs come from a separate MuseScore-based publishing tool, not a MusicXML import. Users pick a part per song rather than being assigned one. The admin page shows usage stats, not a per-piece \"who hasn't practised\" list. The UI is in Finnish.\n\n**scott-tw/choir-practice** (static JS, 0 stars)\n- ✅ Does exactly your audio step in the browser: MusicXML → one MP3 per part with that part clear and the others softer, plus a slow version. Confirmed in `synth.js`: it renders each part separately, mixes them with per-part gain and encodes MP3.\n- ❌ It has no license, so you can't legally reuse the code; at most it shows the approach. It has no accounts or tracking.\n\nNot candidates: MuseScore can export audio from the command line but isn't a web app, and OpenSheetMusicDisplay and Verovio only display scores.",
+      "triggered": true,
+      "searchedRepos": [
+        "linusdeez/choirmate",
+        "xiangthebung/satb-practice",
+        "musescore/musescore",
+        "opensheetmusicdisplay/opensheetmusicdisplay",
+        "coderline/alphatab",
+        "lucas0623z/notelite",
+        "rism-digital/verovio",
+        "oh-sheet-team/oh-sheet",
+        "manojkumarpatnaik/major-project-list",
+        "flujoo/gm",
+        "scragnog/hot-step-cpp",
+        "grame-cncm/libmusicxml",
+        "lenmus/lomse",
+        "infojunkie/musicxml-player",
+        "clolsonus/virtualchoir",
+        "instrumentbible/solfege.ai",
+        "emcramer/choirbm",
+        "albertms10/ccsc",
+        "stackapella/stackapella",
+        "c-o-l-i-n/presto-parts",
+        "raulkivi/sheet-music-mcp",
+        "surojit16/video-editing-skill",
+        "kiwisingh/voxgarden",
+        "birkeeper/choir-practice-midi-player",
+        "mu2026/choirstar",
+        "scott-tw/choir-practice",
+        "diegozc4/melete",
+        "eerovil/stemmanauhat-cf",
+        "maiksd/choirchat",
+        "sharpred/wmcpodcatcher",
+        "oliseonwu/choirsync",
+        "karlhaensel/choirmatch",
+        "charlesekkel/prova",
+        "vehpus/choir-lms",
+        "karlhaensel/lilalelu",
+        "mooque-dev/rehearsal-scheduler-template",
+        "efllux/concentavo",
+        "pitalgoras/awnn",
+        "hrolfurg/mahlerpractice",
+        "misterzeus/choir-practice-helper",
+        "cuthbertlab/music21",
+        "marcomusy/pianoplayer",
+        "howdeploy/choirboy-prompt",
+        "cuthbertlab/music21j",
+        "quackone/homr_gui",
+        "juliamusic/pianofingering.jl",
+        "weber-geoml/choir",
+        "gainsec/arcticbase",
+        "japj/choirlearningtracksresources",
+        "nbogie/js-choir-mixer",
+        "edward7x/bandeck",
+        "ryanmccollum/solana-market-maker-bot",
+        "basmulder03/restassured",
+        "i-xul/flask-band-website-cms",
+        "mrronco/oob-manager"
+      ],
+      "inspectedRepos": [
+        "cuthbertlab/music21",
+        "scott-tw/choir-practice",
+        "eerovil/stemmanauhat-cf",
+        "charlesekkel/prova"
+      ],
+      "readRepos": [
+        "scott-tw/choir-practice",
+        "eerovil/stemmanauhat-cf",
+        "charlesekkel/prova",
+        "cuthbertlab/music21"
+      ],
+      "seconds": 53
+    },
+    {
+      "run": {
+        "caseId": "partial-discord-rpg-game-master",
+        "kind": "partial",
+        "prompt": "I want to build a Discord bot that runs our tabletop role-playing sessions as the game master, narrating scenes and rolling dice with the real rules of our system.",
+        "mustHaves": [
+          "Discord bot",
+          "Acts as game master: narrates scenes and reacts to the players' actions",
+          "Rolls dice using tabletop RPG dice notation"
+        ],
+        "foundationMustHaves": [
+          "Discord bot for tabletop role-playing games",
+          "Rolls dice using tabletop RPG dice notation such as 1d20+5"
+        ],
+        "host": "claude-opus"
+      },
+      "score": {
+        "verdict": false,
+        "judgments": [
+          {
+            "repo": "diceframe/diceframe",
+            "meets": false,
+            "missing": [
+              "Discord bot for tabletop role-playing games",
+              "Rolls dice using tabletop RPG dice notation such as 1d20+5"
+            ]
+          }
+        ]
+      },
+      "finalText": "Verdict: base diceframe/diceframe\n\nDiceFrame is an actively maintained, self-hosted AI game master with 154 stars, 13 contributors and a release two days ago. The AI narrates and the code resolves rule checks. It doesn't ship a Discord adapter, so you'd write one on its platform-neutral bot API. It also only handles d20 and d100 dice, so whether it fits depends on what system you play. I'm assuming this is for your own group, which the licences allow.\n\n**diceframe/diceframe** (AGPL-3.0, very active: 1,829 commits and 30 issues closed in the last 90 days)\n- ✅ AI narration with rule-driven checks. I confirmed this in the code: `src/rules/rule_system.py` loads a game system from a JSON rule file. That file sets attributes, skills, advantage, critical hits, damage, death saves and combat costs. Damage formulas are checked against a whitelist and never run as code. Its docs say the dice and the success test are kept apart, so the AI picks when to roll but the code does the maths.\n- ✅ Custom systems are supported as content packs. Their docs say the bundled D&D 5e and Call of Cthulhu 7e rules are \"lightweight\" approximations, not the full rulebooks. To use your system's real rules, you'd write its rule file yourself.\n- ⚠️ **Only three dice types.** The code accepts only `SUPPORTED_DICE_SYSTEMS = {\"d20\", \"d100\", \"none\"}`. A d20 system (5e, Pathfinder) or a d100 system (CoC, BRP) fits. A dice-pool system (Blades in the Dark, Shadowrun, World of Darkness, Year Zero), Fate, or PbtA's 2d6 would mean extending the engine. That's real work.\n- ⚠️ **No Discord adapter.** The only chat adapter in `plugins/` is `qq-napcat` (QQ is a Chinese messaging app). But `src/bots/bridge_core/client.py` is a platform-neutral client with game actions, GM questions, turn advance, characters, scene images and luck spends. A Discord bot on top of it would mostly be glue code, with the QQ plugin as a model.\n- Cons: it's a large app (web UI, database, plugins), and much of the code and docs are in Chinese.\n\n**twonirwana/discorddicebot** (AGPL-3.0, active, 57 stars)\n- ✅ A Discord dice bot with ready-made presets for about 55 systems: Blades, Shadowrun, Fate, Savage Worlds, Daggerheart, PbtA, Vampire 5e and more.\n- ❌ No AI and no narration. It only rolls. I checked this from the README, not the code. If your system isn't d20 or d100, its dice engine could fill DiceFrame's gap.\n\n**hktrpg/tg.line.discord.roll.bot** (GPL-3.0, 110 stars)\n- ✅ A multi-platform dice bot that works on Discord, with dice for many systems, character cards and initiative tracking.\n- ❌ No AI game master. Its last tagged release is from 2021, though commits are still recent. I didn't read its code.\n\n**Dropped:** rolisteam/diceparser is a strong dice-notation library, but it's dice only and had no commits in the last 90 days. The many \"AI DM Discord bot\" repos are tiny (0–6 stars). The most interesting is shoemoney/eldritchdm, with an AI that narrates while a separate engine runs the 5e rules, but it's 5e-only, has 1 star, and I didn't inspect it.\n\n**Which system do you play?** If it's d20 or d100, DiceFrame plus a Discord adapter is the clear route. If not, it's still the strongest starting point, but count on adding a dice engine (for example from twonirwana's bot) to the work.",
+      "triggered": true,
+      "searchedRepos": [
+        "rolisteam/diceparser",
+        "artemgr/sidekick",
+        "hktrpg/tg.line.discord.roll.bot",
+        "twonirwana/discorddicebot",
+        "circumspect/white-rabbit",
+        "shoemoney/eldritchdm",
+        "kylecommits/dungeon_master_discord_bot",
+        "gelbpunkt/idlerpg",
+        "diceframe/diceframe",
+        "humblemonk/dicemaiden",
+        "henry232323/rpgbot",
+        "dice-discord/bot",
+        "devlops01/discordcryptocasino",
+        "ackness/covel",
+        "paotuan/qqchannel-bot",
+        "sizzlorox/idle-rpg-bot",
+        "gawdl3y/discord-rpbot",
+        "electronistu/project_infinity",
+        "edwardathomson/dungeongpt-js",
+        "sergeykhval/claude-dnd",
+        "alexandrnemashkalo/navi-dnd",
+        "samvoisin/ai-dungeon-master",
+        "west132/ai-gm-engine",
+        "genesismnemosyneengine-ai/genesis-mnemosyne",
+        "mojomast/velvetrp",
+        "lguibr/daicer",
+        "adevivo/discord-ai-companion",
+        "tanjiwei98/discord-ai-dungeon-master",
+        "hairenstein-bear/ai-dungeon-master-discord-bot",
+        "mashhumaximilian/aidm5e",
+        "saebr/ai-dm",
+        "massbchou/singularitybot",
+        "jifish/discord-ai-storyteller",
+        "cocolng/realmai-engine",
+        "pr0degie/dungeonmaster",
+        "alex4512/discord-ai-dm",
+        "endlesstoaster/nd-discord-dungeon-master",
+        "kylecommits/dnd-ai-dungeon-master-v3",
+        "bantyb-boop/dnd-dm-agent"
+      ],
+      "inspectedRepos": [
+        "diceframe/diceframe",
+        "twonirwana/discorddicebot",
+        "hktrpg/tg.line.discord.roll.bot",
+        "rolisteam/diceparser"
+      ],
+      "readRepos": [
+        "diceframe/diceframe"
+      ],
+      "seconds": 67
+    },
+    {
+      "run": {
+        "caseId": "partial-k8s-city-terminal",
+        "kind": "partial",
+        "prompt": "I want to build a terminal dashboard that shows my Kubernetes cluster as a little city, with buildings that grow and shrink with each pod's CPU load.",
+        "mustHaves": [
+          "Runs in the terminal",
+          "Shows live Kubernetes cluster state including per-pod CPU usage",
+          "Draws the cluster as a city whose buildings change with load"
+        ],
+        "foundationMustHaves": [
+          "Terminal user interface for a live Kubernetes cluster",
+          "Shows per-pod resource usage such as CPU"
+        ],
+        "host": "claude-opus"
+      },
+      "score": {
+        "verdict": true,
+        "judgments": [
+          {
+            "repo": "kdash-rs/kdash",
+            "meets": true,
+            "missing": []
+          }
+        ]
+      },
+      "finalText": "Verdict: base kdash-rs/kdash\n\nI found no terminal tool that already draws a Kubernetes cluster as a city. The closest project, KubeDiorama, is a 3D browser app and makes up its CPU numbers. KDash is a terminal dashboard that already reads live CPU for each pod, so the most direct route is to add a \"city\" view to it.\n\n**kdash-rs/kdash** (2.6k stars, MIT, Rust/ratatui, active, last release July 2026)\n- **Pros:** It covers the data half of your idea from start to finish. In `src/app/metrics.rs` it collects per-pod CPU usage from metrics-server, along with requests, limits and node allocatable, and draws it in the terminal. Each view is a small module with its own `render` and `get_resource` functions, so a city view can sit alongside the existing table and gauges and reuse the cluster connection, refresh loop, namespace filter and themes. I read this in the code.\n- **Cons:** The current utilization view is a table, so you'd write the city drawing yourself. You'd also need to work in Rust. Like any tool built on metrics-server, it shows no numbers if your cluster doesn't run it.\n\n**derailed/k9s** (35k stars, Apache-2.0, Go, very active)\n- **Pros:** It also reads live pod and node metrics. `internal/client/metrics.go` adds up each pod's container CPU, which I confirmed in the code. It's the most widely used Kubernetes terminal tool.\n- **Cons:** It's a large, complex app, so adding a custom view is much harder than in KDash. It's only the better choice if you'd rather work in Go.\n\n**pinkpixel-dev/skyline** (34 stars, Apache-2.0, Go, one maintainer)\n- **Pros:** It already draws an ASCII city in the terminal. In `internal/city/city.go`, building height follows a value on a log scale, with windows, roofs and a street laid out on a grid, kept separate from the colouring code. I read this. That layout is close to what your buildings need.\n- **Cons:** It only reads GitHub/Gitea contribution data, prints one still picture and has no Kubernetes support. It's worth copying the idea or the code, not building on. With KDash it's a design reference because it's in Go, but with k9s you could reuse the code directly.\n\n**voste126/kubediorama** (0 stars, TypeScript + Go, no commits in 90 days)\n- **Ruled out:** It's a 3D city in the browser, not the terminal. In `agent/main.go` the CPU numbers are random values (`getMetrics` uses `rand.Float64()`), not real metrics, and it even marks pods as failed at random. I confirmed both in the code.",
+      "triggered": true,
+      "searchedRepos": [
+        "kdash-rs/kdash",
+        "astefanutti/kubebox",
+        "nklmilojevic/sofka",
+        "janosmiko/lfk",
+        "bjarneo/ku",
+        "p10node/k10s",
+        "voste126/kubediorama",
+        "derailed/k9s",
+        "pranshuparmar/witr",
+        "kubernetes/client-go",
+        "googlecloudplatform/kubectl-ai",
+        "fabric8io/kubernetes-client",
+        "cirosantilli/china-dictatorship",
+        "fairwindsops/pluto",
+        "altinity/clickhouse-operator",
+        "gege-circle/.github",
+        "kubetail-org/kubetail",
+        "hcavarsan/kftray",
+        "databricks/click",
+        "lifailon/lazyjournal",
+        "godaddy/kubernetes-client",
+        "kubedb/cli",
+        "cilium/cilium-cli",
+        "darksworm/argonaut",
+        "sarub0b0/kubetui",
+        "cirosantilli/china-dictatroship-7",
+        "pehlicd/crd-wizard",
+        "mrfwq7lwnpzjavv5v6eo/cihna-dictattorshrip-8",
+        "panbinibn/openpacketfix_",
+        "oslabs-beta/navigate",
+        "vvrnv/argo9s",
+        "pidanou/helm-tui",
+        "zpc1314521/pcl2",
+        "nii236/kk",
+        "bytestrix/infracanvas",
+        "everettraven/buoy",
+        "oslabs-beta/kedalyze",
+        "notharshhaa/kubernetes-dashboard",
+        "pinkpixel-dev/skyline",
+        "tum-gis/sddi-ckan-k8s"
+      ],
+      "inspectedRepos": [
+        "derailed/k9s",
+        "kdash-rs/kdash",
+        "pinkpixel-dev/skyline",
+        "voste126/kubediorama"
+      ],
+      "readRepos": [
+        "voste126/kubediorama",
+        "derailed/k9s",
+        "pinkpixel-dev/skyline",
+        "kdash-rs/kdash"
+      ],
+      "seconds": 49
+    }
+  ]
+}
