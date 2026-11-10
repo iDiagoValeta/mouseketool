@@ -8,7 +8,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh -s -- --uninstall
 #
 # Claude Code gets the repository as a plugin, through its own marketplace commands. opencode gets a copy of the
-# repository in $XDG_DATA_HOME/mouseketool, the skill linked into its skills directory and the server added to
+# repository in $XDG_DATA_HOME/mouseketool, a copy of the skill in its skills directory and the server added to
 # its opencode.json. Running it again updates both.
 set -eu
 
@@ -18,6 +18,8 @@ REF="${MOUSEKETOOL_REF:-main}"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/mouseketool"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 OPENCODE_SKILL="$OPENCODE_DIR/skills/mouseketool"
+# Marks the skill copy as this script's, so an install replaces and an uninstall removes only that copy.
+MARKER=".installed-by-mouseketool"
 
 say() { printf 'mouseketool: %s\n' "$*"; }
 fail() {
@@ -112,12 +114,14 @@ opencode_install() {
   rm -rf "$DATA_DIR"
   mv "$staging" "$DATA_DIR"
 
-  if [ -e "$OPENCODE_SKILL" ] && [ ! -L "$OPENCODE_SKILL" ]; then
-    say "opencode: $OPENCODE_SKILL already exists and is not a link this script made; remove it and run again."
+  if [ -e "$OPENCODE_SKILL" ] && [ ! -f "$OPENCODE_SKILL/$MARKER" ]; then
+    say "opencode: $OPENCODE_SKILL already exists and was not installed by this script; remove it and run again."
     return 1
   fi
+  rm -rf "$OPENCODE_SKILL"
   mkdir -p "$(dirname "$OPENCODE_SKILL")"
-  ln -sfn "$DATA_DIR/skills/mouseketool" "$OPENCODE_SKILL"
+  cp -R "$DATA_DIR/skills/mouseketool" "$OPENCODE_SKILL"
+  : >"$OPENCODE_SKILL/$MARKER"
 
   if opencode_config add; then
     say "opencode: installed. Start a new session to load it."
@@ -129,8 +133,8 @@ opencode_install() {
 
 opencode_uninstall() {
   removed=no
-  if [ -L "$OPENCODE_SKILL" ]; then
-    rm "$OPENCODE_SKILL"
+  if [ -f "$OPENCODE_SKILL/$MARKER" ]; then
+    rm -rf "$OPENCODE_SKILL"
     removed=yes
   fi
   if [ -f "$OPENCODE_DIR/opencode.json" ]; then
