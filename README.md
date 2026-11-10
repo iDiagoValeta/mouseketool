@@ -77,16 +77,17 @@ Any project that meets them counts, not only the one a case was built on. The ve
 ```bash
 pnpm eval --calibrate   # check the judge and the cases first
 pnpm eval --pass 0      # a full pass
+pnpm eval --pass 0 --host claude-opus --only <case>,<case>   # a few cases on Opus
 ```
 
-Results of 2026-11-04 (58 runs), within every threshold:
+Results of 2026-11-10 (58 runs), within every threshold:
 
 | Host | Defined | Vague | Partial | Invented | Small tasks |
 |---|---|---|---|---|---|
-| Claude Code, Sonnet 5.5 | 92% | 83% | 100% | 100% | 100% |
-| opencode, deepseek-flash | 100% | 100% | 50% | 100% | 100% |
+| Claude Code, Sonnet 5.5 | 100% | 100% | 100% | 100% | 100% |
+| opencode, deepseek-flash | 100% | 100% | 100% | 100% | 100% |
 
-Every run, with the host's full answer and the judge's verdicts, is in [`evals/results/2026-11-04/`](evals/results/2026-11-04/README.md).
+That pass took four attempts. Each failed attempt missed one threshold by a single case, and its misses led to a change in the skill. A spot check on Opus 5.5 got 2 of 3 hard runs right. Every run of every attempt, with the host's full answer and the judge's verdicts, is in [`evals/results/2026-11-10/`](evals/results/2026-11-10/README.md).
 
 ## Development
 
