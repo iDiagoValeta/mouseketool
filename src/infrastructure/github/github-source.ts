@@ -17,8 +17,17 @@ const RAW_MEDIA = 'application/vnd.github.raw';
 const DEFAULT_LIMIT_WAIT_MS = 60_000;
 // A tool call that blocks for longer than this looks hung to the caller; fail with the reset time.
 const MAX_LIMIT_WAIT_MS = 60_000;
-const PAGE = 100;
 const BINARY_SNIFF_BYTES = 8_000;
+// One query for the counts a page of REST results can only cap: the open issues (without pull
+// requests), the commits on the default branch and the issues closed in the window. It costs one
+// GraphQL point and nothing from the REST search quota, which stays reserved for searches.
+const ACTIVITY_QUERY = `query($owner: String!, $name: String!, $since: GitTimestamp!, $closed: String!) {
+  repository(owner: $owner, name: $name) {
+    issues(states: OPEN) { totalCount }
+    defaultBranchRef { target { ... on Commit { history(since: $since) { totalCount } } } }
+  }
+  search(type: ISSUE, query: $closed, first: 0) { issueCount }
+}`;
 
 export class GitHubError extends SourceError {
   override name = 'GitHubError';
@@ -52,7 +61,15 @@ interface RepoJson {
   topics?: string[];
   archived: boolean;
   language?: string | null;
-  open_issues_count?: number;
+}
+
+interface ActivityJson {
+  repository: {
+    issues: { totalCount: number };
+    // Null for an empty repository, which has no branch yet.
+    defaultBranchRef: { target: { history?: { totalCount: number } } } | null;
+  };
+  search: { issueCount: number };
 }
 
 export class GitHubSource implements RepositorySource {
@@ -159,32 +176,52 @@ export class GitHubSource implements RepositorySource {
   }
 
   async activity(name: RepoName, since: Date): Promise<ActivityFacts> {
+    const [owner, repo] = name.split('/') as [string, string];
     const sinceIso = since.toISOString();
-    const [repo, commits, issues, contributors, release] = await Promise.all([
-      this.repoJson(name),
-      this.request(`/repos/${name}/commits?since=${sinceIso}&per_page=${PAGE}`, { allow: [409] }),
-      this.request(`/repos/${name}/issues?state=closed&since=${sinceIso}&per_page=${PAGE}`),
-      this.request(`/repos/${name}/contributors?per_page=${PAGE}`),
+    const [counts, contributors, release] = await Promise.all([
+      this.graphql<ActivityJson>(ACTIVITY_QUERY, name, {
+        owner,
+        name: repo,
+        since: sinceIso,
+        closed: `repo:${name} is:issue is:closed closed:>=${sinceIso}`,
+      }),
+      // GitHub refuses with a 403 to list the contributors of a very large repository.
+      this.request(`/repos/${name}/contributors?per_page=1`, { allow: [403] }),
       this.request(`/repos/${name}/releases/latest`, { allow: [404] }),
     ]);
 
-    // `since` on the issues endpoint filters by last update, so closure is checked here.
-    const closed = ((await issues.json()) as { closed_at: string | null; pull_request?: unknown }[])
-      .filter(
-        (issue) =>
-          issue.pull_request === undefined &&
-          issue.closed_at !== null &&
-          Date.parse(issue.closed_at) >= since.getTime(),
-      ).length;
-
     return {
-      // A 409 is an empty repository, and a 204 on contributors has no body.
-      commitsLast90Days: commits.status === 409 ? 0 : await countItems(commits),
-      issuesClosedLast90Days: closed,
-      openIssues: repo.open_issues_count ?? 0,
-      contributors: contributors.status === 204 ? 0 : await countItems(contributors),
+      commitsLast90Days: counts.repository.defaultBranchRef?.target.history?.totalCount ?? 0,
+      issuesClosedLast90Days: counts.search.issueCount,
+      openIssues: counts.repository.issues.totalCount,
+      // A 204 on contributors is an empty repository, and has no body.
+      contributors:
+        contributors.status === 403
+          ? null
+          : contributors.status === 204
+            ? 0
+            : await countItems(contributors),
       latestRelease: release.status === 404 ? null : await toRelease(release),
     };
+  }
+
+  /** Runs one GraphQL query; GraphQL reports a missing repository as `errors` in a 200. */
+  private async graphql<T>(
+    query: string,
+    name: RepoName,
+    variables: Record<string, string>,
+  ): Promise<T> {
+    const response = await this.request('/graphql', { body: JSON.stringify({ query, variables }) });
+    const body = (await response.json()) as { data?: T | null; errors?: unknown[] };
+    if ((body.errors?.length ?? 0) === 0 && body.data != null) {
+      return body.data;
+    }
+    // An exhausted GraphQL limit also comes back as a 200 with errors, and with the usual headers.
+    const reset = response.headers.get('x-ratelimit-reset');
+    if (response.headers.get('x-ratelimit-remaining') === '0' && reset !== null) {
+      throw new RateLimitedError(new Date(Number(reset) * 1000));
+    }
+    throw new SourceError(`GitHub GraphQL query failed for ${name}`);
   }
 
   private async repoJson(name: RepoName): Promise<RepoJson> {
@@ -198,9 +235,9 @@ export class GitHubSource implements RepositorySource {
    */
   private async request(
     path: string,
-    opts: { raw?: boolean; allow?: number[] } = {},
+    opts: { raw?: boolean; allow?: number[]; body?: string } = {},
   ): Promise<Response> {
-    let response = await this.send(path, opts.raw === true);
+    let response = await this.send(path, opts);
     let limit = this.rateLimit(response);
 
     if (limit !== null) {
@@ -209,7 +246,7 @@ export class GitHubSource implements RepositorySource {
         throw new RateLimitedError(limit.resetAt);
       }
       await this.clock.sleep(waitMs);
-      response = await this.send(path, opts.raw === true);
+      response = await this.send(path, opts);
       limit = this.rateLimit(response);
       if (limit !== null) {
         throw new RateLimitedError(limit.resetAt);
@@ -223,11 +260,12 @@ export class GitHubSource implements RepositorySource {
     throw new GitHubError(response.status, path.split('?')[0]!);
   }
 
-  private async send(path: string, raw: boolean): Promise<Response> {
+  private async send(path: string, opts: { raw?: boolean; body?: string }): Promise<Response> {
     try {
       return await this.fetchFn(`${API}${path}`, {
+        ...(opts.body === undefined ? {} : { method: 'POST', body: opts.body }),
         headers: {
-          Accept: raw ? RAW_MEDIA : JSON_MEDIA,
+          Accept: opts.raw === true ? RAW_MEDIA : JSON_MEDIA,
           Authorization: `Bearer ${this.token}`,
           'X-GitHub-Api-Version': '2022-11-28',
         },
@@ -277,8 +315,18 @@ function toCandidate(raw: RepoJson): Candidate {
   };
 }
 
+/**
+ * The item count of a list asked for one item per page: the number of its last page, or the
+ * items of the only page when the `Link` header names no last page.
+ */
 async function countItems(response: Response): Promise<number> {
-  return ((await response.json()) as unknown[]).length;
+  const last = response.headers
+    .get('link')
+    ?.split(',')
+    .find((part) => part.includes('rel="last"'))
+    ?.match(/<([^>]+)>/)?.[1];
+  const page = last === undefined ? null : new URL(last).searchParams.get('page');
+  return page === null ? ((await response.json()) as unknown[]).length : Number(page);
 }
 
 async function toRelease(response: Response): Promise<ActivityFacts['latestRelease']> {
