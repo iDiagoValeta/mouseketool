@@ -10,7 +10,7 @@ import { CachedJudge, ClaudeJudge } from './judge.ts';
 import { HOSTS, MODELS, planRuns, type Host, type Run } from './plan-runs.ts';
 import { ClaudeRunner } from './runners/claude-runner.ts';
 import { OpencodeRunner } from './runners/opencode-runner.ts';
-import type { Runner } from './runners/runner.ts';
+import { killLiveProcesses, type Runner } from './runners/runner.ts';
 import { buildReport, describeScore, finalLine, scoreRun, type Report, type Score } from './score.ts';
 import { createWorkspace, readRunLog, removeLiveWorkspaces, removeWorkspace } from './workspace.ts';
 
@@ -45,10 +45,13 @@ if (values.host !== undefined && !(HOSTS as readonly string[]).includes(values.h
 }
 
 // An interrupt skips the `finally` blocks, and the workspaces of the host and the judge hold the GitHub token.
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+// A host or judge still running would keep spending paid model time, so it is stopped first. The exit code
+// is 128 plus the signal number, as a shell reports it.
+for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]] as const) {
   process.on(signal, () => {
+    killLiveProcesses();
     removeLiveWorkspaces();
-    process.exit(130);
+    process.exit(code);
   });
 }
 
@@ -100,7 +103,7 @@ if (plan.length === 0) {
   process.exit(USAGE);
 }
 
-type Result = { run: Run; score: Score; finalText: string; searchedRepos: string[]; inspectedRepos: string[]; triggered: boolean; error?: string; seconds: number };
+type Result = { run: Run; score: Score; finalText: string; searchedRepos: string[]; inspectedRepos: string[]; readRepos: string[]; triggered: boolean; error?: string; seconds: number };
 const results: Result[] = [];
 
 const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${filtered ? '-partial' : ''}.json`);

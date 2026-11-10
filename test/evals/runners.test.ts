@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ClaudeRunner, parseClaudeOutput } from '../../evals/harness/runners/claude-runner.ts';
 import { OpencodeRunner, parseOpencodeOutput } from '../../evals/harness/runners/opencode-runner.ts';
-import type { Exec } from '../../evals/harness/runners/runner.ts';
+import { execCapture, killLiveProcesses, type Exec } from '../../evals/harness/runners/runner.ts';
 
 const claudeFixture = readFileSync('test/evals/fixtures/claude-output.json', 'utf8');
 const opencodeFixture = readFileSync('test/evals/fixtures/opencode-output.jsonl', 'utf8');
@@ -195,5 +195,18 @@ describe('OpencodeRunner', () => {
   it('throws when opencode fails without producing text', async () => {
     const exec: Exec = async () => ({ stdout: '', stderr: 'boom', code: 1 });
     await expect(new OpencodeRunner(exec, '/real/data').run('x', '/ws')).rejects.toThrow('boom');
+  });
+});
+
+describe('killLiveProcesses', () => {
+  it('stops a host that is still running, so an interrupt does not leave it spending', async () => {
+    const running = execCapture(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], {
+      cwd: process.cwd(),
+      env: {},
+    });
+
+    killLiveProcesses();
+
+    await expect(running).rejects.toMatchObject({ killed: true, signal: 'SIGTERM' });
   });
 });

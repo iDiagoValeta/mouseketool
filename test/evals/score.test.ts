@@ -34,11 +34,11 @@ const found = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: t
 const notFound = (repo: string): Judgment => ({ repo: parseRepoName(repo), meets: false, missing: ['does b'] });
 
 describe('scoreRun, positive', () => {
-  const outcome = (finalText: string, searchedRepos: string[], triggered = true, fileReads = 1) => ({
+  const outcome = (finalText: string, searchedRepos: string[], triggered = true, readRepos: string[] = searchedRepos) => ({
     finalText,
     searchedRepos: names(...searchedRepos),
     triggered,
-    fileReads,
+    readRepos: names(...readRepos),
   });
 
   it('is a hit when a recommended repo from the search meets the requirements', async () => {
@@ -141,40 +141,81 @@ describe('scoreRun, positive', () => {
 
   it('scores false with noCodeRead when it would be a hit but the host read no code', async () => {
     const { judge, calls } = fakeJudge(['foo/bar']);
-    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar'], true, 0), mustHaves, judge);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar'], true, []), mustHaves, judge);
     expect(score).toEqual({ retrieval: true, verdict: false, noCodeRead: true, judgments: [found('foo/bar')] });
     expect(calls).toEqual(['foo/bar']);
   });
 
   it('does not flag noCodeRead on a miss that was a miss anyway', async () => {
     const { judge } = fakeJudge([]);
-    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar'], true, 0), mustHaves, judge);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar'], true, []), mustHaves, judge);
     expect(score.verdict).toBe(false);
     expect(score.noCodeRead).toBeUndefined();
-    expect((await scoreRun(run('positive-defined'), outcome('Verdict: build', ['foo/bar'], true, 0), mustHaves, judge)).noCodeRead).toBeUndefined();
+    expect((await scoreRun(run('positive-defined'), outcome('Verdict: build', ['foo/bar'], true, []), mustHaves, judge)).noCodeRead).toBeUndefined();
   });
 
-  it('is a hit with a single file read', async () => {
+  it('is a hit with a read of the repo that meets the requirements', async () => {
     const { judge } = fakeJudge(['foo/bar']);
-    const score = await scoreRun(run('positive-vague'), outcome('Verdict: adapt foo/bar', ['foo/bar'], true, 1), mustHaves, judge);
+    const score = await scoreRun(run('positive-vague'), outcome('Verdict: adapt foo/bar', ['foo/bar', 'x/y'], true, ['foo/bar']), mustHaves, judge);
     expect(score.verdict).toBe(true);
     expect(score.noCodeRead).toBeUndefined();
+  });
+
+  it('scores false with noCodeRead when the host read another repo, not the one that meets', async () => {
+    const { judge } = fakeJudge(['foo/bar']);
+    const score = await scoreRun(run('positive-defined'), outcome('Verdict: adapt foo/bar', ['foo/bar', 'x/y'], true, ['x/y']), mustHaves, judge);
+    expect(score).toEqual({ retrieval: true, verdict: false, noCodeRead: true, judgments: [found('foo/bar')] });
+  });
+
+  it('counts no read from a failed, missing or binary read, which the server logs without a repo', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mouseketool-score-test-'));
+    try {
+      const runLog = join(dir, 'run.jsonl');
+      writeFileSync(
+        runLog,
+        '{"tool":"search_repositories","repos":["foo/bar"]}\n{"tool":"read_repository_file","repos":[]}\n',
+      );
+      const { judge } = fakeJudge(['foo/bar']);
+      const score = await scoreRun(
+        run('positive-defined'),
+        { finalText: 'Verdict: reuse foo/bar', ...readRunLog({ dir, runLog }) },
+        mustHaves,
+        judge,
+      );
+      expect(score).toMatchObject({ verdict: false, noCodeRead: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
 describe('scoreRun, negative', () => {
-  const outcome = (finalText: string, searchedRepos: string[] = [], fileReads = 1) => ({
+  const outcome = (finalText: string, searchedRepos: string[] = [], readRepos: string[] = searchedRepos, triggered = true) => ({
     finalText,
     searchedRepos: names(...searchedRepos),
-    triggered: true,
-    fileReads,
+    triggered,
+    readRepos: names(...readRepos),
   });
 
   it('passes on build and on base without judging, since nothing is recommended as a cover', async () => {
     const { judge, calls } = fakeJudge(['a/b']);
-    expect(await scoreRun(run('negative'), outcome('Verdict: build'), mustHaves, judge)).toEqual({ verdict: true });
+    expect(await scoreRun(run('negative'), outcome('Verdict: build', ['x/y']), mustHaves, judge)).toEqual({ verdict: true });
     expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['a/b']), mustHaves, judge)).toEqual({ verdict: true });
     expect(calls).toEqual([]);
+  });
+
+  it('is a miss on base with a foundation the search never returned, or with no search at all', async () => {
+    const { judge } = fakeJudge([]);
+    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['x/y']), mustHaves, judge)).toEqual({ verdict: false });
+    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', [], ['a/b'], false), mustHaves, judge)).toEqual({ verdict: false });
+  });
+
+  it('scores false with noCodeRead on base when the host read another repo than the foundation', async () => {
+    const { judge } = fakeJudge([]);
+    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['a/b', 'x/y'], ['x/y']), mustHaves, judge)).toEqual({
+      verdict: false,
+      noCodeRead: true,
+    });
   });
 
   it('is a miss on reuse or adapt of a repo that does not meet the requirements', async () => {
@@ -217,19 +258,19 @@ describe('scoreRun, negative', () => {
 
   it('scores false with noCodeRead on a build or base that read no code', async () => {
     const { judge } = fakeJudge([]);
-    expect(await scoreRun(run('negative'), outcome('Verdict: build', [], 0), mustHaves, judge)).toEqual({ verdict: false, noCodeRead: true });
-    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['a/b'], 0), mustHaves, judge)).toEqual({ verdict: false, noCodeRead: true });
+    expect(await scoreRun(run('negative'), outcome('Verdict: build', ['a/b'], []), mustHaves, judge)).toEqual({ verdict: false, noCodeRead: true });
+    expect(await scoreRun(run('negative'), outcome('Verdict: base a/b', ['a/b'], []), mustHaves, judge)).toEqual({ verdict: false, noCodeRead: true });
   });
 
   it('keeps the covered flag, but scores false with noCodeRead, when a covering recommendation read no code', async () => {
     const { judge } = fakeJudge(['a/b']);
-    const score = await scoreRun(run('negative'), outcome('Verdict: reuse a/b', ['a/b'], 0), mustHaves, judge);
+    const score = await scoreRun(run('negative'), outcome('Verdict: reuse a/b', ['a/b'], []), mustHaves, judge);
     expect(score).toEqual({ verdict: false, noCodeRead: true, caseCovered: true, judgments: [found('a/b')] });
   });
 
   it('does not flag noCodeRead on a miss that was a miss anyway', async () => {
     const { judge } = fakeJudge([]);
-    const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b'], 0), mustHaves, judge);
+    const score = await scoreRun(run('negative'), outcome('Verdict: adapt a/b', ['a/b'], []), mustHaves, judge);
     expect(score).toEqual({ verdict: false, judgments: [notFound('a/b')] });
   });
 });
@@ -237,11 +278,11 @@ describe('scoreRun, negative', () => {
 describe('scoreRun, partial', () => {
   const foundation = ['foundation a'];
   const partialRun = (): Run => ({ caseId: 'p', kind: 'partial', prompt: 'p', mustHaves, foundationMustHaves: foundation, host: 'claude-sonnet' });
-  const outcome = (finalText: string, searchedRepos: string[] = [], fileReads = 1, triggered = true) => ({
+  const outcome = (finalText: string, searchedRepos: string[] = [], readRepos: string[] = searchedRepos, triggered = true) => ({
     finalText,
     searchedRepos: names(...searchedRepos),
     triggered,
-    fileReads,
+    readRepos: names(...readRepos),
   });
   /** Meets `foundation` for the repos in `onFoundation` and the full `mustHaves` for those in `onWhole`. */
   function judgeByList(onFoundation: string[], onWhole: string[]): { judge: Judge; asked: { repo: RepoName; items: string[] }[] } {
@@ -291,7 +332,7 @@ describe('scoreRun, partial', () => {
 
   it('scores false with noCodeRead when the base is right but the host read no code', async () => {
     const { judge } = judgeByList(['a/a'], []);
-    const score = await scoreRun(partialRun(), outcome('Verdict: base a/a', ['a/a'], 0), mustHaves, judge);
+    const score = await scoreRun(partialRun(), outcome('Verdict: base a/a', ['a/a'], []), mustHaves, judge);
     expect(score).toEqual({ verdict: false, noCodeRead: true, judgments: [{ repo: 'a/a', meets: true, missing: [] }] });
   });
 
@@ -305,7 +346,7 @@ describe('scoreRun, partial', () => {
     const { judge, asked } = judgeByList(['a/a'], ['a/a']);
     const score = async (o: ReturnType<typeof outcome> & { error?: string }) => (await scoreRun(partialRun(), o, mustHaves, judge)).verdict;
     expect(await score(outcome('no verdict here', ['a/a']))).toBe(false);
-    expect(await score(outcome('Verdict: base a/a', ['a/a'], 1, false))).toBe(false);
+    expect(await score(outcome('Verdict: base a/a', ['a/a'], ['a/a'], false))).toBe(false);
     expect(await score({ ...outcome('Verdict: base a/a', ['a/a']), error: 'claude run failed' })).toBe(false);
     expect(asked).toEqual([]);
   });
@@ -346,7 +387,7 @@ describe('scoreRun, trigger', () => {
   it('passes only when the server was never called', async () => {
     const { judge, calls } = fakeJudge([]);
     const score = (triggered: boolean) =>
-      scoreRun(run('trigger'), { finalText: 'done', searchedRepos: [], triggered, fileReads: 0 }, undefined, judge);
+      scoreRun(run('trigger'), { finalText: 'done', searchedRepos: [], triggered, readRepos: [] }, undefined, judge);
     expect(await score(false)).toEqual({ verdict: true });
     expect(await score(true)).toEqual({ verdict: false });
     expect(calls).toEqual([]);
@@ -355,7 +396,7 @@ describe('scoreRun, trigger', () => {
 
 describe('scoreRun, host run that errored', () => {
   const error = 'claude run failed: error_max_turns';
-  const perfect = { finalText: 'Verdict: adapt foo/bar', searchedRepos: names('foo/bar'), triggered: true, fileReads: 1 };
+  const perfect = { finalText: 'Verdict: adapt foo/bar', searchedRepos: names('foo/bar'), triggered: true, readRepos: names('foo/bar') };
 
   it('scores false on retrieval and hit for a positive run, without calling the judge', async () => {
     const { judge, calls } = fakeJudge(['foo/bar']);
@@ -367,13 +408,13 @@ describe('scoreRun, host run that errored', () => {
 
   it('scores a negative false even if its text says build', async () => {
     const { judge } = fakeJudge([]);
-    const outcome = { finalText: 'Verdict: build', searchedRepos: [], triggered: true, fileReads: 1, error };
+    const outcome = { finalText: 'Verdict: build', searchedRepos: [], triggered: true, readRepos: names('a/b'), error };
     expect(await scoreRun(run('negative'), outcome, mustHaves, judge)).toEqual({ verdict: false });
   });
 
   it('scores a trigger false even though the empty log looks like "not triggered"', async () => {
     const { judge } = fakeJudge([]);
-    const outcome = { finalText: '', searchedRepos: [], triggered: false, fileReads: 0, error };
+    const outcome = { finalText: '', searchedRepos: [], triggered: false, readRepos: [], error };
     expect(await scoreRun(run('trigger'), outcome, undefined, judge)).toEqual({ verdict: false });
   });
 });
