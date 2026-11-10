@@ -15,3 +15,18 @@ describe('plugin manifest', () => {
     expect(existsSync('.mcp.json')).toBe(false);
   });
 });
+
+describe('marketplace manifest', () => {
+  it('lists the plugin at the repository root, under the name of plugin.json', () => {
+    const plugin = JSON.parse(readFileSync('.claude-plugin/plugin.json', 'utf8')) as { name: string };
+    const marketplace = JSON.parse(readFileSync('.claude-plugin/marketplace.json', 'utf8')) as {
+      name: string;
+      plugins: { name: string; source: string }[];
+    };
+    expect(marketplace.plugins).toEqual([expect.objectContaining({ name: plugin.name, source: './' })]);
+  });
+
+  it('ships the bundle the plugin runs, since an installed plugin runs no build', () => {
+    expect(existsSync('dist/server.mjs')).toBe(true);
+  });
+});

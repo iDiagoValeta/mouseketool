@@ -27,5 +27,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
-      # A broken import only shows up in the bundle, not in tsc.
+      # A broken import only shows up in the bundle, not in tsc. The bundle is committed, because an installed
+      # plugin runs no build, so it must match the source it was built from.
       - run: pnpm build
+      - name: Committed bundle matches the source
+        run: git diff --exit-code -- dist/ || { echo "::error::dist/ is stale: run pnpm build and commit it"; exit 1; }
