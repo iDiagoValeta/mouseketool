@@ -11,7 +11,6 @@ import type { RunLog } from '../../application/ports/run-log.ts';
 import { readRepositoryFile } from '../../application/read-repository-file.ts';
 import { searchCandidates, TooManyQueriesError } from '../../application/search-candidates.ts';
 import { InvalidRepoNameError } from '../../domain/repo-name.ts';
-import pkg from '../../../package.json' with { type: 'json' };
 
 const SEARCH_DESCRIPTION =
   'Searches GitHub for existing projects. Takes 1 to 15 varied queries in one call: ' +
@@ -42,8 +41,9 @@ export function createMcpServer(deps: {
   source: RepositorySource;
   log: RunLog;
   now: () => Date;
+  version: string;
 }): McpServer {
-  const server = new McpServer({ name: 'mouseketool', version: pkg.version });
+  const server = new McpServer({ name: 'mouseketool', version: deps.version });
 
   server.registerTool(
     'search_repositories',

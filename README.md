@@ -28,24 +28,33 @@ The skill triggers by itself when you want a new reusable tool to exist, and sta
 
 ## Install
 
-You need Node 24 or later, pnpm, and a GitHub token: either `GITHUB_TOKEN`, or being logged in with `gh auth login`.
+You need Node 24 or later and a GitHub token: either `GITHUB_TOKEN`, or being logged in with `gh auth login`.
 
 ```bash
-git clone https://github.com/iDiagoValeta/mouseketool.git
-cd mouseketool
-pnpm install --frozen-lockfile
-pnpm build
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh
 ```
 
-**Claude Code.** The repository is a plugin:
+This installs mouseketool for every supported agent on your machine:
+- **Claude Code**: installed as a plugin, through Claude Code's own marketplace commands.
+- **opencode**: the repository goes to `~/.local/share/mouseketool`, the skill to `~/.config/opencode/skills/`, and the server to your `opencode.json`.
+
+Run the same command again to update. To uninstall:
 
 ```bash
-claude --plugin-dir /path/to/mouseketool
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh -s -- --uninstall
 ```
 
-**opencode.**
-1. Copy `skills/mouseketool/` into a skills directory, such as `.opencode/skills/` or `~/.config/opencode/skills/`.
-2. Add the server to `opencode.json`, as in [`opencode.example.json`](opencode.example.json), with the absolute path to `dist/server.mjs`.
+With Claude Code alone you can also skip the script:
+
+```bash
+claude plugin install mouseketool --marketplace iDiagoValeta/mouseketool
+```
+
+and uninstall with:
+
+```bash
+claude plugin marketplace remove mouseketool
+```
 
 The token is sent only to `api.github.com`. It is never logged and never appears in a tool result. Searches are queued to GitHub's limit of 30 per minute.
 
@@ -82,9 +91,15 @@ Every run, with the host's full answer and the judge's verdicts, is in [`evals/r
 ## Development
 
 ```bash
+git clone https://github.com/iDiagoValeta/mouseketool.git
+cd mouseketool
+pnpm install --frozen-lockfile
 pnpm check   # typecheck, lint (including the hexagonal layer rules) and tests
-pnpm build   # bundle the server into dist/server.mjs
+pnpm build   # bundle the server and its dependencies into dist/server.mjs
+claude --plugin-dir .   # try your local copy in Claude Code
 ```
+
+`dist/` is committed, because an installed plugin runs no build. CI fails when it does not match the source, so commit it after `pnpm build`.
 
 The code is hexagonal:
 - `src/domain` and `src/application` import no adapter or IO module;

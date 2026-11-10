@@ -29,7 +29,7 @@ const NOW = new Date('2026-11-03T00:00:00Z');
 const clients: Client[] = [];
 
 async function connect(source: RepositorySource, log = new MemoryRunLog()): Promise<Client> {
-  const server = createMcpServer({ source, log, now: () => NOW });
+  const server = createMcpServer({ source, log, now: () => NOW, version: '9.9.9' });
   const client = new Client({ name: 'test', version: '0' });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverSide), client.connect(clientSide)]);

@@ -19,8 +19,12 @@ Hexagonal (ports and adapters). Dependencies point inward:
 - `pnpm lint`: ESLint, including the layer rule.
 - `pnpm test`: Vitest.
 - `pnpm check`: typecheck, lint and test. Run it before pushing.
-- `pnpm build`: bundles `src/main.ts` into `dist/server.mjs`, the `mouseketool` bin.
+- `pnpm build`: bundles `src/main.ts` and every dependency into `dist/server.mjs`, the `mouseketool` bin, plus `dist/THIRD_PARTY_LICENSES.md`. `dist/` is committed, because an installed plugin runs no build. CI rebuilds it and fails when the committed copy differs, so commit it after every change to `src/` or to the dependencies. A Dependabot PR that bumps a bundled dependency fails that check until `pnpm build` is run on its branch and `dist/` is pushed.
 - `pnpm eval`: runs the eval harness in `evals/harness/cli.ts`.
+
+## Install
+
+`install.sh` installs and uninstalls (`--uninstall`) for Claude Code, through its plugin marketplace (`.claude-plugin/marketplace.json`), and for opencode. `MOUSEKETOOL_REF=<branch>` installs a branch instead of `main`.
 
 ## Local files
 
