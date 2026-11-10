@@ -82,7 +82,7 @@ describe('createMcpServer', () => {
       expect(tool.description?.length ?? 0).toBeLessThan(600);
     }
     const search = tools.find((tool) => tool.name === 'search_repositories');
-    expect(search?.description).toMatch(/1 to 15/);
+    expect(search?.description).toMatch(/1 to 30/);
     expect(search?.description).toMatch(/does no judging/i);
   });
 
@@ -187,20 +187,20 @@ describe('createMcpServer', () => {
     expect(textOf(result)).toBe('Expected "owner/name", got "foo"');
   });
 
-  it('returns a query count outside 1 to 15 as an error', async () => {
+  it('returns a query count outside 1 to 30 as an error', async () => {
     const client = await connect(new InMemorySource());
 
     const none = await client.callTool({ name: 'search_repositories', arguments: { queries: [] } });
     const many = await client.callTool({
       name: 'search_repositories',
-      arguments: { queries: Array.from({ length: 16 }, (_, i) => `q${i}`) },
+      arguments: { queries: Array.from({ length: 31 }, (_, i) => `q${i}`) },
     });
 
     // The schema rejects them before the use case runs, naming the bound that was broken.
     expect(none.isError).toBe(true);
     expect(textOf(none)).toMatch(/>=1 items/);
     expect(many.isError).toBe(true);
-    expect(textOf(many)).toMatch(/<=15 items/);
+    expect(textOf(many)).toMatch(/<=30 items/);
   });
 
   it('declares every tool read-only and open-world, and the query bounds in the search schema', async () => {
@@ -211,7 +211,7 @@ describe('createMcpServer', () => {
       expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: true });
     }
     const search = tools.find((tool) => tool.name === 'search_repositories');
-    expect(search?.inputSchema.properties?.['queries']).toMatchObject({ minItems: 1, maxItems: 15 });
+    expect(search?.inputSchema.properties?.['queries']).toMatchObject({ minItems: 1, maxItems: 30 });
   });
 
   it('returns the rate limit and source errors of any source with their message', async () => {

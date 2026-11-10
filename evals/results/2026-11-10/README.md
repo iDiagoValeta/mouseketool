@@ -46,6 +46,20 @@ Each row is one attempt at pass 1. The skill was the one in `main` after the PR 
 - **Attempt 2** fixed them, but Sonnet then picked young projects that looked like the idea as bases, such as `braveadmin/kube-city` (1 star) over `kdash-rs/kdash`. [#54](https://github.com/iDiagoValeta/mouseketool/pull/54) made maturity decide among bases.
 - **Attempt 3** missed three projects the search never returned: `tldx`, `AudioMuse-AI` and `avrae`. In each, the model knew its best candidate lacked a must-have, but the skill allowed a second search only when the first found nothing useful. One run also listed a directory without reading a file. [#56](https://github.com/iDiagoValeta/mouseketool/pull/56) asks for a second search, aimed at the uncovered must-haves, and says a listing is not a read.
 
+## Search through GraphQL
+
+After [#60](https://github.com/iDiagoValeta/mouseketool/pull/60) moved search to GraphQL, raised the cap from 15 to 30 queries a call, and the skill asked for more vocabulary variants, pass 1 ran once more. It passed every threshold, with 56 of 58 runs right. The report is `pass1-graphql.json`.
+
+| Host | Defined | Vague | Partial | Negatives | Small tasks | Median run |
+|---|---|---|---|---|---|---|
+| Sonnet 5.5 | 100% | 92% | 67% | 100% | 100% | 26 s |
+| deepseek-flash | 100% | 100% | 100% | 100% | 100% | 77 s |
+
+- **More candidates per run, same recall.** Each run saw 66 distinct repositories from its searches on average, against 46 in the fourth attempt with REST. The project a case was built on came back in 42 of 46 positive and partial runs, the same count as with REST. GraphQL recovered two that REST had missed and missed one that REST had found.
+- **The two misses are Sonnet's choices.**
+  - `partial-k8s-city-terminal`: the search returned `derailed/k9s` and `kdash-rs/kdash`, and Sonnet again chose `braveadmin/kube-city` (1 star) as the base. [#54](https://github.com/iDiagoValeta/mouseketool/pull/54) narrowed this bias but did not remove it.
+  - `pos-many-git-repos` vague: no search returned `nosarthur/gita` or `jasursadikov/mud`, and Sonnet chose `bircni/git-statuses`, which lacks batch commands.
+
 ## Opus spot check
 
 Three hard runs on Opus 5.5 (`claude-opus-5-5` on Claude Code), with the skill of [#52](https://github.com/iDiagoValeta/mouseketool/pull/52). These are the two partial ideas that ask the most judgment, and the negative with five must-haves. They ran through the spot host of [#50](https://github.com/iDiagoValeta/mouseketool/pull/50), outside the rotation.

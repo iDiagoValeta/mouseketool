@@ -75,13 +75,17 @@ describe('searchCandidates', () => {
     expect(result.candidates.map((c) => c.name)).toEqual(['foo/bar']);
   });
 
-  it('sends the queries one at a time, in order', async () => {
+  it('sends every query at once and merges in query order, whatever order the answers come in', async () => {
     const events: string[] = [];
-    const inner = new InMemorySource({ failingQueries: { b: 'boom' } });
+    const inner = new InMemorySource({
+      searches: { a: [candidate('x/first', 1)], c: [candidate('x/third', 1)] },
+      failingQueries: { b: 'boom' },
+    });
     const source = Object.create(inner) as RepositorySource;
+    const delays: Record<string, number> = { a: 15, b: 5, c: 1 };
     source.search = async (query, perQuery) => {
       events.push(`start ${query}`);
-      await new Promise((resolve) => setTimeout(resolve, 1));
+      await new Promise((resolve) => setTimeout(resolve, delays[query]));
       events.push(`end ${query}`);
       return inner.search(query, perQuery);
     };
@@ -91,14 +95,17 @@ describe('searchCandidates', () => {
       { queries: ['a', 'b', 'c'] },
     );
 
-    expect(events).toEqual(['start a', 'end a', 'start b', 'end b', 'start c', 'end c']);
+    expect(events.slice(0, 3)).toEqual(['start a', 'start b', 'start c']);
+    expect(events.slice(3)).toEqual(['end c', 'end b', 'end a']);
+    // Equal stars and matches: the order is the order of the queries, not of the answers.
+    expect(result.candidates.map((c) => c.name)).toEqual(['x/first', 'x/third']);
     expect(result.errors).toEqual([{ query: 'b', message: 'boom' }]);
   });
 
-  it('caps the merged list at 40 candidates', async () => {
+  it('caps the merged list at 60 candidates', async () => {
     const many = Array.from({ length: 10 }, (_, i) => candidate(`o/r${i}`));
     const searches = Object.fromEntries(
-      Array.from({ length: 5 }, (_, q) => [
+      Array.from({ length: 7 }, (_, q) => [
         `q${q}`,
         many.map((c) => ({ ...c, name: `${c.name}-${q}` })),
       ]),
@@ -108,24 +115,24 @@ describe('searchCandidates', () => {
       { queries: Object.keys(searches) },
     );
 
-    expect(result.candidates).toHaveLength(40);
+    expect(result.candidates).toHaveLength(60);
   });
 
-  it('rejects more than 15 queries without calling the source, logging one empty entry', async () => {
+  it('rejects more than 30 queries without calling the source, logging one empty entry', async () => {
     const source = new InMemorySource();
     const log = new MemoryRunLog();
-    const queries = Array.from({ length: 16 }, (_, i) => `q${i}`);
+    const queries = Array.from({ length: 31 }, (_, i) => `q${i}`);
 
     const call = searchCandidates({ source, log }, { queries });
 
     await expect(call).rejects.toThrow(TooManyQueriesError);
-    await expect(call).rejects.toThrow('At most 15 queries per call, got 16');
+    await expect(call).rejects.toThrow('At most 30 queries per call, got 31');
     expect(source.searchCalls).toEqual([]);
     expect(log.entries).toEqual([{ tool: 'search_repositories', repos: [] }]);
   });
 
-  it('accepts exactly 15 queries', async () => {
-    const queries = Array.from({ length: 15 }, (_, i) => `q${i}`);
+  it('accepts exactly 30 queries', async () => {
+    const queries = Array.from({ length: 30 }, (_, i) => `q${i}`);
 
     await expect(
       searchCandidates({ source: new InMemorySource(), log: new MemoryRunLog() }, { queries }),

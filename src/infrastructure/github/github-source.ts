@@ -8,7 +8,7 @@ import type { Candidate } from '../../domain/candidate.ts';
 import type { ActivityFacts } from '../../domain/health.ts';
 import { parseRepoName } from '../../domain/repo-name.ts';
 import type { RepoName } from '../../domain/repo-name.ts';
-import type { Clock, RateLimiter } from './rate-limiter.ts';
+import type { Clock, Concurrency } from './concurrency.ts';
 
 const API = 'https://api.github.com';
 const JSON_MEDIA = 'application/vnd.github+json';
@@ -27,6 +27,19 @@ const ACTIVITY_QUERY = `query($owner: String!, $name: String!, $since: GitTimest
     defaultBranchRef { target { ... on Commit { history(since: $since) { totalCount } } } }
   }
   search(type: ISSUE, query: $closed, first: 0) { issueCount }
+}`;
+// Repository search through GraphQL costs one point of 5,000 an hour and nothing from the REST search quota of
+// 30 a minute, and returns what REST returns, in the same order (measured 2026-11-10, #59). One search per
+// request: several aliased into one request take seconds each and hit the gateway timeout at 15.
+const SEARCH_QUERY = `query($q: String!, $first: Int!) {
+  search(type: REPOSITORY, query: $q, first: $first) {
+    nodes {
+      ... on Repository {
+        nameWithOwner url description stargazerCount pushedAt createdAt isArchived
+        licenseInfo { spdxId } primaryLanguage { name } repositoryTopics(first: 20) { nodes { topic { name } } }
+      }
+    }
+  }
 }`;
 
 export class GitHubError extends SourceError {
@@ -63,6 +76,19 @@ interface RepoJson {
   language?: string | null;
 }
 
+interface SearchNodeJson {
+  nameWithOwner: string;
+  url: string;
+  description: string | null;
+  stargazerCount: number;
+  pushedAt: string | null;
+  createdAt: string;
+  isArchived: boolean;
+  licenseInfo: { spdxId: string | null } | null;
+  primaryLanguage: { name: string } | null;
+  repositoryTopics: { nodes: { topic: { name: string } }[] };
+}
+
 interface ActivityJson {
   repository: {
     issues: { totalCount: number };
@@ -75,48 +101,46 @@ interface ActivityJson {
 export class GitHubSource implements RepositorySource {
   private readonly token: string;
   private readonly fetchFn: typeof fetch;
-  private readonly searchLimiter: RateLimiter;
+  private readonly searchConcurrency: Concurrency;
   private readonly clock: Clock;
-  // Epoch ms at which an exhausted search quota refills; each process starts blind, so the
-  // headers of the last search response are the only way to learn what earlier ones spent.
+  // Epoch ms at which a refused search may be tried again, learnt from the refusal itself.
   private searchQuotaResetsAt: number | null = null;
 
   constructor(opts: {
     token: string;
     fetch: typeof fetch;
-    searchLimiter: RateLimiter;
+    searchConcurrency: Concurrency;
     clock: Clock;
   }) {
     this.token = opts.token;
     this.fetchFn = opts.fetch;
-    this.searchLimiter = opts.searchLimiter;
+    this.searchConcurrency = opts.searchConcurrency;
     this.clock = opts.clock;
   }
 
   async search(query: string, perQuery: number): Promise<Candidate[]> {
-    await this.waitForSearchQuota();
-    await this.searchLimiter.acquire();
-    const params = new URLSearchParams({ q: query, per_page: String(perQuery) });
-    let response: Response;
-    try {
-      response = await this.request(`/search/repositories?${params}`);
-    } catch (error) {
-      // A refusal is also news of an exhausted quota: the next search fails at once instead of asking again.
-      if (error instanceof RateLimitedError) {
-        this.searchQuotaResetsAt = error.resetAt.getTime();
-      }
-      throw error;
-    }
-    this.noteSearchQuota(response);
-    const body = (await response.json()) as { items: RepoJson[] };
-
-    // One malformed name must not cost the whole query its results.
-    return body.items.flatMap((item) => {
+    return this.searchConcurrency.run(async () => {
+      await this.waitForSearchQuota();
+      let data: { search: { nodes: SearchNodeJson[] } };
       try {
-        return [toCandidate(item)];
-      } catch {
-        return [];
+        // The query text stays out of the error message: it is the caller's input, not a fact about GitHub.
+        data = await this.graphql(SEARCH_QUERY, 'a repository search', { q: query, first: perQuery });
+      } catch (error) {
+        // A refusal is also news of an exhausted quota: the next search fails at once instead of asking again.
+        if (error instanceof RateLimitedError) {
+          this.searchQuotaResetsAt = error.resetAt.getTime();
+        }
+        throw error;
       }
+
+      // One malformed node, a bad name or an empty one, must not cost the whole query its results.
+      return data.search.nodes.flatMap((node) => {
+        try {
+          return [fromSearchNode(node)];
+        } catch {
+          return [];
+        }
+      });
     });
   }
 
@@ -134,12 +158,6 @@ export class GitHubSource implements RepositorySource {
     if (waitMs > 0) {
       await this.clock.sleep(waitMs);
     }
-  }
-
-  private noteSearchQuota(response: Response): void {
-    const reset = response.headers.get('x-ratelimit-reset');
-    const exhausted = response.headers.get('x-ratelimit-remaining') === '0';
-    this.searchQuotaResetsAt = exhausted && reset !== null ? Number(reset) * 1000 : null;
   }
 
   async repository(name: RepoName): Promise<Candidate> {
@@ -219,11 +237,14 @@ export class GitHubSource implements RepositorySource {
     };
   }
 
-  /** Runs one GraphQL query; GraphQL reports a missing repository as `errors` in a 200. */
+  /**
+   * Runs one GraphQL query; GraphQL reports a missing repository as `errors` in a 200. `subject` names what the
+   * query was about in the error message, so it must hold nothing the caller typed.
+   */
   private async graphql<T>(
     query: string,
-    name: RepoName,
-    variables: Record<string, string>,
+    subject: string,
+    variables: Record<string, string | number>,
   ): Promise<T> {
     const response = await this.request('/graphql', { body: JSON.stringify({ query, variables }) });
     const body = (await response.json()) as { data?: T | null; errors?: unknown[] };
@@ -235,7 +256,7 @@ export class GitHubSource implements RepositorySource {
     if (response.headers.get('x-ratelimit-remaining') === '0' && reset !== null) {
       throw new RateLimitedError(new Date(Number(reset) * 1000));
     }
-    throw new SourceError(`GitHub GraphQL query failed for ${name}`);
+    throw new SourceError(`GitHub GraphQL query failed for ${subject}`);
   }
 
   private async repoJson(name: RepoName): Promise<RepoJson> {
@@ -318,6 +339,21 @@ type ListingJson = { name: string; type: string }[];
 
 function toEntry(entry: ListingJson[number]): string {
   return entry.type === 'dir' ? `${entry.name}/` : entry.name;
+}
+
+function fromSearchNode(node: SearchNodeJson): Candidate {
+  return {
+    name: parseRepoName(node.nameWithOwner),
+    url: node.url,
+    description: node.description,
+    stars: node.stargazerCount,
+    // The domain computes months from this, so it must always be a date. Empty repos have no push.
+    pushedAt: node.pushedAt ?? node.createdAt,
+    license: node.licenseInfo?.spdxId ?? null,
+    topics: node.repositoryTopics.nodes.map((entry) => entry.topic.name),
+    archived: node.isArchived,
+    language: node.primaryLanguage?.name ?? null,
+  };
 }
 
 function toCandidate(raw: RepoJson): Candidate {
