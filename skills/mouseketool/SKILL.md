@@ -5,7 +5,7 @@ description: "Use FIRST, before you start writing a new reusable tool, app, serv
 
 # mouseketool
 
-Before building something new, find out whether it already exists. The tools `search_repositories`, `inspect_repository` and `read_repository_file` (MCP server `mouseketool`) gather facts and make no judgments. You judge.
+Before building something new, find out whether it already exists. The tools `search_repositories`, `inspect_repository` and `read_repository_file` (MCP server `mouseketool`) gather facts and make no judgments. You judge. Your final answer starts with its verdict line (section 7), with nothing before it.
 
 ## 1. Gate
 
@@ -29,18 +29,18 @@ Call `inspect_repository` on 3 to 6 candidates (fewer only when fewer survive th
 
 ## 6. Judge
 
-For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have. When a mature project would be the foundation the new tool sits on (an engine, framework, library or app that covers part of the idea), the verdict is `base` with that project, not `build`. The test is size: when the project already does at least one must-have end to end (for example it reads the live data and shows it in the terminal), it is a base, even if you would replace or extend part of it. Build and borrow a piece only when what you would reuse is smaller than a must-have, such as one parser or one function.
+For each candidate: coverage per must-have, health (`maintenance`, recent activity, open issues), adoption (stars, contributors, releases), license fit, and the rough effort of adapting it versus building from scratch. Between candidates that cover the must-haves, prefer the one people actually use: a mature project beats a weeks-old repo with a handful of stars. Never recommend `reuse` or `adapt` for a candidate that misses a must-have. When a mature project would be the foundation the new tool sits on (an engine, framework, library or app that covers part of the idea), the verdict is `base` with that project, not `build`. The test is size: when the project already does at least one must-have end to end (for example it reads the live data and shows it in the terminal), it is a base, even if you would replace or extend part of it. Build and borrow a piece only when what you would reuse is smaller than a must-have, such as one parser or one function. Pick the base by maturity before closeness to the idea: the most adopted project that does a must-have end to end beats a young one with few stars or a single contributor, even one that looks more like the idea, because the base is what the new tool will depend on. Name a young, closer project as a reference in the answer, not as the base.
 
 ## 7. Answer
 
 The first line of the answer is exactly one of these, nothing before it: no sentence about what you did ("I searched...", "Here is the result"), no heading, no blank line.
 
-- `Verdict: reuse owner/name` : use it as is.
-- `Verdict: adapt owner/name` : fork or modify it to fit.
-- `Verdict: base owner/name` : build on top of it as a foundation.
+- `Verdict: reuse foo/bar` : use it as is.
+- `Verdict: adapt foo/bar` : fork or modify it to fit.
+- `Verdict: base foo/bar` : build on top of it as a foundation.
 - `Verdict: build` : nothing fits, build from scratch.
 
-For `reuse`, `adapt` and `base`, list `owner/name` after the word, comma-separated when there are several (`Verdict: adapt foo/bar, baz/qux`). Copy each `owner/name` from the `name` field of a tool result, never from memory, a package name or a README: a project can live under another owner than its name suggests. The line holds nothing else: no other words or punctuation, and it stays in English even when the rest of the answer is in the user's language. Examples:
+Here `foo/bar` stands for the repository's real name. For `reuse`, `adapt` and `base`, list it after the word, comma-separated when there are several (`Verdict: adapt foo/bar, baz/qux`). Copy each name from the `name` field of a tool result, never from memory, a package name or a README: a project can live under another owner than its name suggests. The line holds nothing else: no other words or punctuation, and it stays in English even when the rest of the answer is in the user's language. Examples:
 
 ```
 Verdict: reuse foo/bar
