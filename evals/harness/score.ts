@@ -1,6 +1,6 @@
 import type { RepoName } from '../../src/domain/repo-name.ts';
 import type { Judge, Judgment } from './judge.ts';
-import { HOSTS, type Host, type Run } from './plan-runs.ts';
+import { HOSTS, SPOT_HOSTS, type Host, type Run } from './plan-runs.ts';
 import { parseVerdict } from './verdict.ts';
 
 /**
@@ -182,9 +182,9 @@ function ratio(passes: boolean[]): number {
   return passes.length === 0 ? 1 : passes.filter(Boolean).length / passes.length;
 }
 
-/** One summary per host that has results, in `HOSTS` order. */
+/** One summary per host that has results, in `HOSTS` order, then the spot hosts. */
 export function summarize(results: { run: Run; score: Score }[]): PerHostSummary[] {
-  return HOSTS.flatMap((host) => {
+  return [...HOSTS, ...SPOT_HOSTS].flatMap((host) => {
     const own = results.filter((r) => r.run.host === host);
     if (own.length === 0) return [];
     const passes = (kind: Run['kind'], pick: (s: Score) => boolean | undefined) =>

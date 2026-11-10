@@ -7,7 +7,7 @@ import { loadCases } from '../cases/schema.ts';
 import { ghAuthToken, resolveToken } from '../../src/infrastructure/github/token.ts';
 import { calibrate, calibratePartial } from './calibrate.ts';
 import { CachedJudge, ClaudeJudge } from './judge.ts';
-import { HOSTS, MODELS, planRuns, type Host, type Run } from './plan-runs.ts';
+import { HOSTS, MODELS, planRuns, planSpotRuns, SPOT_HOSTS, type Host, type Run, type SpotHost } from './plan-runs.ts';
 import { ClaudeRunner } from './runners/claude-runner.ts';
 import { OpencodeRunner } from './runners/opencode-runner.ts';
 import { killLiveProcesses, type Runner } from './runners/runner.ts';
@@ -36,11 +36,22 @@ const { values } = parseArgs({
 const calibrating = values.calibrate === true;
 const pass = Number(values.pass);
 if (!calibrating && (!Number.isInteger(pass) || pass < 0)) {
-  console.error('Usage: pnpm eval --pass <n> [--only <caseId>] [--host <host>]\n       pnpm eval --calibrate [--only <caseId>]');
+  console.error(
+    'Usage: pnpm eval --pass <n> [--only <caseId>[,<caseId>...]] [--host <host>]\n' +
+      '       pnpm eval --pass <n> --host claude-opus --only <caseId>[,<caseId>...]\n' +
+      '       pnpm eval --calibrate [--only <caseId>[,<caseId>...]]',
+  );
   process.exit(USAGE);
 }
-if (values.host !== undefined && !(HOSTS as readonly string[]).includes(values.host)) {
-  console.error(`Unknown host "${values.host}". Hosts: ${HOSTS.join(', ')}`);
+// --only takes one case id or several, comma-separated.
+const only = values.only?.split(',').map((id) => id.trim());
+const spotHost = (SPOT_HOSTS as readonly string[]).includes(values.host ?? '') ? (values.host as SpotHost) : undefined;
+if (values.host !== undefined && spotHost === undefined && !(HOSTS as readonly string[]).includes(values.host)) {
+  console.error(`Unknown host "${values.host}". Hosts: ${[...HOSTS, ...SPOT_HOSTS].join(', ')}`);
+  process.exit(USAGE);
+}
+if (spotHost !== undefined && only === undefined) {
+  console.error(`${spotHost} is outside the rotation: name the cases it runs with --only <caseId>[,<caseId>...]`);
   process.exit(USAGE);
 }
 
@@ -75,7 +86,7 @@ const judge = new CachedJudge(new ClaudeJudge(repoRoot, githubToken), join(repor
 
 if (calibrating) {
   // Checks the judge and the requirements before a real pass: no host runs.
-  const chosen = (id: string) => values.only === undefined || id === values.only;
+  const chosen = (id: string) => only === undefined || only.includes(id);
   const positive = cases.positive.filter((c) => chosen(c.id));
   const partial = cases.partial.filter((c) => chosen(c.id));
   if (positive.length + partial.length === 0) {
@@ -95,9 +106,12 @@ if (calibrating) {
 }
 
 const filtered = values.only !== undefined || values.host !== undefined;
-const plan = planRuns(cases, pass).filter(
-  (run) => (values.only === undefined || run.caseId === values.only) && (values.host === undefined || run.host === values.host),
-);
+const plan =
+  spotHost !== undefined
+    ? planSpotRuns(cases, spotHost, only ?? [])
+    : planRuns(cases, pass).filter(
+        (run) => (only === undefined || only.includes(run.caseId)) && (values.host === undefined || run.host === values.host),
+      );
 if (plan.length === 0) {
   console.error(`No run matches --only ${values.only ?? '*'} --host ${values.host ?? '*'}`);
   process.exit(USAGE);
@@ -106,7 +120,7 @@ if (plan.length === 0) {
 type Result = { run: Run; score: Score; finalText: string; searchedRepos: string[]; inspectedRepos: string[]; readRepos: string[]; triggered: boolean; error?: string; seconds: number };
 const results: Result[] = [];
 
-const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${filtered ? '-partial' : ''}.json`);
+const reportPath = join(reportDir, `${new Date().toISOString().slice(0, 10)}-pass${pass}${spotHost === undefined ? '' : `-${spotHost}`}${filtered ? '-partial' : ''}.json`);
 
 // Rewritten after every run so a crash keeps what already finished.
 function writeReport(complete: boolean): Report {
