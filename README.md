@@ -68,7 +68,7 @@ The token is sent only to `api.github.com`. It is never logged and never appears
 - **6 small tasks**, where the skill must stay silent.
 
 A recommendation counts as a hit only if all three hold:
-- the project came from that run's search, not from the model's memory;
+- the project came from that run's search, not from the model's memory: a project the model already knew counts only once a search in that run returns it, which also confirms its exact name;
 - the host read at least one file of that project;
 - a separate judge confirms it meets every must-have.
 
