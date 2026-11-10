@@ -5,7 +5,10 @@ import type { RunLog } from './ports/run-log.ts';
 
 const FILE_LIMIT = 20_000;
 
-export type ReadFileResult = { text: string } | { text: null; reason: 'binary' | 'missing' };
+export type ReadFileResult =
+  | { text: string }
+  | { text: null; reason: 'binary' | 'missing' }
+  | { text: null; reason: 'directory'; entries: string[] };
 
 export async function readRepositoryFile(
   deps: { source: RepositorySource; log: RunLog },
@@ -24,6 +27,9 @@ export async function readRepositoryFile(
 
   await deps.log.record({ tool: 'read_repository_file', repos: [name] });
 
+  if (content.kind === 'directory') {
+    return { text: null, reason: 'directory', entries: content.entries };
+  }
   if (content.kind !== 'text') {
     return { text: null, reason: content.kind };
   }
