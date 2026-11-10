@@ -97,7 +97,16 @@ export class GitHubSource implements RepositorySource {
     await this.waitForSearchQuota();
     await this.searchLimiter.acquire();
     const params = new URLSearchParams({ q: query, per_page: String(perQuery) });
-    const response = await this.request(`/search/repositories?${params}`);
+    let response: Response;
+    try {
+      response = await this.request(`/search/repositories?${params}`);
+    } catch (error) {
+      // A refusal is also news of an exhausted quota: the next search fails at once instead of asking again.
+      if (error instanceof RateLimitedError) {
+        this.searchQuotaResetsAt = error.resetAt.getTime();
+      }
+      throw error;
+    }
     this.noteSearchQuota(response);
     const body = (await response.json()) as { items: RepoJson[] };
 

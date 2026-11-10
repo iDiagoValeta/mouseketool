@@ -5,9 +5,9 @@ import { parseVerdict } from './verdict.ts';
 
 /**
  * `error` is set when the host run failed; nothing it left behind (an empty log included) counts as a pass.
- * `fileReads` is how many times the host called `read_repository_file`.
+ * `readRepos` are the repos the host read a file of with `read_repository_file`, failed reads left out.
  */
-export type Outcome = { finalText: string; searchedRepos: RepoName[]; triggered: boolean; fileReads: number; error?: string };
+export type Outcome = { finalText: string; searchedRepos: RepoName[]; triggered: boolean; readRepos: RepoName[]; error?: string };
 
 /**
  * `verdict` is the pass/fail of the run (the hit for a positive one). `retrieval` is diagnostic only.
@@ -47,19 +47,33 @@ async function judgeUntilMeets(
 }
 
 /**
- * A run that passes only counts when the host read code first, as the skill requires.
+ * A run that passes only counts when the host read code first, as the skill requires: a file of the repo the
+ * pass rests on (`passingRepos`, any of them), or of any repo for a build verdict, which rests on none.
  * Otherwise it scores false and says why, so the report does not read it as a plain miss.
  */
-function requireCodeRead(passes: boolean, outcome: Outcome): { verdict: boolean; noCodeRead?: true } {
-  return passes && outcome.fileReads < 1 ? { verdict: false, noCodeRead: true } : { verdict: passes };
+function requireCodeRead(
+  passes: boolean,
+  outcome: Outcome,
+  passingRepos?: RepoName[],
+): { verdict: boolean; noCodeRead?: true } {
+  const read =
+    passingRepos === undefined
+      ? outcome.readRepos.length > 0
+      : passingRepos.some((repo) => outcome.readRepos.includes(repo));
+  return passes && !read ? { verdict: false, noCodeRead: true } : { verdict: passes };
+}
+
+/** The repos the judge found to meet the requirements. */
+function meeting(judgments: Judgment[]): RepoName[] {
+  return judgments.filter((j) => j.meets).map((j) => j.repo);
 }
 
 /**
  * The server's run log says which repos the search returned, so it holds for any host and catches a model
  * that answers from memory: only recommended repos that the search returned are judged, not ones the model
  * merely inspected. The verdict line is read from the answer; whether a recommended repo is good is decided
- * by the judge, against the requirements. Any pass also needs the host to have read code (`fileReads`),
- * except a trigger run, which is about not calling the server at all.
+ * by the judge, against the requirements. Any pass also needs the host to have read a file of the repo it rests
+ * on (`readRepos`), except a trigger run, which is about not calling the server at all.
  */
 export async function scoreRun(
   run: Run,
@@ -82,15 +96,18 @@ export async function scoreRun(
   const recommended = (verdict?.repos ?? []).filter((repo) => outcome.searchedRepos.includes(repo));
 
   if (run.kind === 'negative') {
-    // "Build it, borrow a piece" passes. Reuse and adapt recommend a project for a need nothing should cover,
-    // so they miss, unless a recommended project does meet every requirement: then the case itself is wrong
-    // and it passes flagged, so the author replaces it. No verdict line is a miss.
+    // Build passes. Base passes too, as "build it on this foundation", which the skill asks for when a mature
+    // project covers part of the idea, but only with a foundation the run found and read: a remembered name or
+    // an unread one is a miss. Reuse and adapt recommend a project for a need nothing should cover, so they
+    // miss, unless a recommended project does meet every requirement: then the case itself is wrong and it
+    // passes flagged, so the author replaces it. No verdict line is a miss.
     if (verdict === null) return { verdict: false };
-    if (verdict.decision === 'build' || verdict.decision === 'base') return requireCodeRead(true, outcome);
+    if (verdict.decision === 'build') return requireCodeRead(true, outcome);
+    if (verdict.decision === 'base') return requireCodeRead(outcome.triggered && recommended.length > 0, outcome, recommended);
     const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
     const covered = judgments.some((j) => j.meets);
     return {
-      ...requireCodeRead(covered, outcome),
+      ...requireCodeRead(covered, outcome, meeting(judgments)),
       ...(covered ? { caseCovered: true } : {}),
       judgments,
       ...(judgeError === undefined ? {} : { judgeError }),
@@ -109,7 +126,7 @@ export async function scoreRun(
     if (verdict.decision === 'base') {
       const { judgments, judgeError } = await judgeUntilMeets(recommended, foundationMustHaves, judge);
       return {
-        ...requireCodeRead(judgments.some((j) => j.meets), outcome),
+        ...requireCodeRead(judgments.some((j) => j.meets), outcome, meeting(judgments)),
         judgments,
         ...(judgeError === undefined ? {} : { judgeError }),
       };
@@ -117,7 +134,7 @@ export async function scoreRun(
     const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
     const covered = judgments.some((j) => j.meets);
     return {
-      ...(covered ? { ...requireCodeRead(true, outcome), caseCovered: true } : { verdict: false }),
+      ...(covered ? { ...requireCodeRead(true, outcome, meeting(judgments)), caseCovered: true } : { verdict: false }),
       judgments,
       ...(judgeError === undefined ? {} : { judgeError }),
     };
@@ -130,7 +147,7 @@ export async function scoreRun(
   const { judgments, judgeError } = await judgeUntilMeets(recommended, mustHaves, judge);
   return {
     retrieval,
-    ...requireCodeRead(judgments.some((j) => j.meets), outcome),
+    ...requireCodeRead(judgments.some((j) => j.meets), outcome, meeting(judgments)),
     judgments,
     ...(judgeError === undefined ? {} : { judgeError }),
   };

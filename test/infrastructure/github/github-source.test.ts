@@ -148,6 +148,21 @@ describe('GitHubSource.search quota', () => {
     expect(clock.sleeps).toEqual([]);
   });
 
+  it('fails the next search without a request after a refusal whose reset is too far to wait for', async () => {
+    const { source, seen } = setup({
+      '/search/repositories': {
+        status: 403,
+        json: { message: 'API rate limit exceeded' },
+        headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(NOW / 1000 + 120) },
+      },
+    });
+
+    await expect(source.search('a', 5)).rejects.toBeInstanceOf(RateLimitedError);
+    await expect(source.search('b', 5)).rejects.toBeInstanceOf(RateLimitedError);
+
+    expect(seen).toHaveLength(1);
+  });
+
   it('does not sleep when requests remain', async () => {
     const { source, clock } = setup({ '/search/repositories': searchReply('3', 30) });
 

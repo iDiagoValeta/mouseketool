@@ -25,7 +25,8 @@ export async function readRepositoryFile(
     throw error;
   }
 
-  await deps.log.record({ tool: 'read_repository_file', repos: [name] });
+  // The repo is logged only when text came back: a missing or binary file, or a directory, read no code.
+  await deps.log.record({ tool: 'read_repository_file', repos: content.kind === 'text' ? [name] : [] });
 
   if (content.kind === 'directory') {
     return { text: null, reason: 'directory', entries: content.entries };
