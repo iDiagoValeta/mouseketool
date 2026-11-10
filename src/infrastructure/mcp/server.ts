@@ -34,6 +34,10 @@ const READ_FILE_DESCRIPTION =
   '{ text: null, reason: "directory", entries }, with a trailing "/" on subdirectories. ' +
   '`repo` is "owner/name" or a GitHub URL; `path` is relative to the repository root.';
 
+// Every tool only reads public GitHub data: a host may run them without asking, and their results change as
+// GitHub does.
+const ANNOTATIONS = { readOnlyHint: true, openWorldHint: true };
+
 // Errors a caller can act on: their message is safe to show and says what to change.
 const REPORTABLE = [InvalidRepoNameError, TooManyQueriesError, SourceRateLimitedError, SourceError];
 
@@ -49,7 +53,10 @@ export function createMcpServer(deps: {
     'search_repositories',
     {
       description: SEARCH_DESCRIPTION,
-      inputSchema: { queries: z.array(z.string()).describe('1 to 15 GitHub search queries') },
+      inputSchema: {
+        queries: z.array(z.string()).min(1).max(15).describe('1 to 15 GitHub search queries'),
+      },
+      annotations: ANNOTATIONS,
     },
     (input) => respond('search_repositories', () => searchCandidates(deps, input)),
   );
@@ -59,6 +66,7 @@ export function createMcpServer(deps: {
     {
       description: INSPECT_DESCRIPTION,
       inputSchema: { repo: z.string().describe('"owner/name" or a GitHub URL') },
+      annotations: ANNOTATIONS,
     },
     (input) => respond('inspect_repository', () => inspectRepository(deps, input)),
   );
@@ -67,6 +75,7 @@ export function createMcpServer(deps: {
     'read_repository_file',
     {
       description: READ_FILE_DESCRIPTION,
+      annotations: ANNOTATIONS,
       inputSchema: {
         repo: z.string().describe('"owner/name" or a GitHub URL'),
         path: z.string().describe('File path relative to the repository root'),
