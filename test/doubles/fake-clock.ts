@@ -1,4 +1,4 @@
-import type { Clock } from '../../src/infrastructure/github/rate-limiter.ts';
+import type { Clock } from '../../src/infrastructure/github/concurrency.ts';
 
 /** A clock whose sleep moves time forward instead of waiting. */
 export class FakeClock implements Clock {

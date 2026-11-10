@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GitHubSource } from '../../../src/infrastructure/github/github-source.ts';
-import { RateLimiter, systemClock } from '../../../src/infrastructure/github/rate-limiter.ts';
+import { Concurrency, systemClock } from '../../../src/infrastructure/github/concurrency.ts';
 import { ghAuthToken, resolveToken } from '../../../src/infrastructure/github/token.ts';
 
 // Talks to the real GitHub API with the real token, so it only runs on request.
@@ -9,7 +9,7 @@ describe.skipIf(process.env['MOUSEKETOOL_LIVE'] !== '1')('GitHubSource against a
     return new GitHubSource({
       token: await resolveToken(process.env, ghAuthToken),
       fetch,
-      searchLimiter: new RateLimiter(30, systemClock),
+      searchConcurrency: new Concurrency(10),
       clock: systemClock,
     });
   }

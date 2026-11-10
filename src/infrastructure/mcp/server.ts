@@ -13,7 +13,7 @@ import { searchCandidates, TooManyQueriesError } from '../../application/search-
 import { InvalidRepoNameError } from '../../domain/repo-name.ts';
 
 const SEARCH_DESCRIPTION =
-  'Searches GitHub for existing projects. Takes 1 to 15 varied queries in one call: ' +
+  'Searches GitHub for existing projects. Takes 1 to 30 varied queries in one call: ' +
   'synonyms, community names, and "topic:" qualifiers. Returns the merged candidates as JSON ' +
   '(name, url, description, stars, pushedAt, license, topics, archived, language, matchedQueries) plus per-query ' +
   'errors. Candidates found by several queries rank first. The server does no judging: ' +
@@ -54,7 +54,7 @@ export function createMcpServer(deps: {
     {
       description: SEARCH_DESCRIPTION,
       inputSchema: {
-        queries: z.array(z.string()).min(1).max(15).describe('1 to 15 GitHub search queries'),
+        queries: z.array(z.string()).min(1).max(30).describe('1 to 30 GitHub search queries'),
       },
       annotations: ANNOTATIONS,
     },

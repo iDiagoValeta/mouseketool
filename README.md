@@ -56,7 +56,7 @@ and uninstall with:
 claude plugin marketplace remove mouseketool
 ```
 
-The token is sent only to `api.github.com`. It is never logged and never appears in a tool result. Searches are queued to GitHub's limit of 30 per minute.
+The token is sent only to `api.github.com`. It is never logged and never appears in a tool result. Searches go through GitHub's GraphQL API, 10 at a time, so a call of up to 30 queries does not wait on the REST search limit of 30 per minute.
 
 ## Evaluation
 

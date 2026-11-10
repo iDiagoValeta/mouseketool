@@ -17,7 +17,7 @@ Split the idea into must-haves and nice-to-haves, and note the stated use (comme
 
 ## 3. Expand
 
-Write 8 to 15 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 15 rewordings of the user's sentence. GitHub matches every word of a query, so keep each to 2 to 4 keywords; long queries return nothing. Add `stars:>50` to at least half of them, so mature projects are not buried under one-person experiments.
+Write 15 to 30 varied queries: synonyms, the names the community would use, category terms, `topic:` qualifiers, different angles on the same need. Not 30 rewordings of the user's sentence. GitHub matches whole words, so a project turns up only for the words it uses itself: write the forms a community would, such as an abbreviation and its spelled-out form (`dnd`, `d&d`, `dungeons dragons`), or the singular and the plural. A project a query misses is rarely further down its results; another wording finds it. GitHub matches every word of a query, so keep each to 2 to 4 keywords; long queries return nothing. Add `stars:>50` to at least half of them, so mature projects are not buried under one-person experiments.
 
 ## 4. Search and shortlist
 

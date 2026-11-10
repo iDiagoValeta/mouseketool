@@ -5,14 +5,14 @@ import {
   GitHubSource,
   RateLimitedError,
 } from '../../../src/infrastructure/github/github-source.ts';
-import { RateLimiter } from '../../../src/infrastructure/github/rate-limiter.ts';
+import { Concurrency } from '../../../src/infrastructure/github/concurrency.ts';
 import { FakeClock } from '../../doubles/fake-clock.ts';
 
 const sentinel = 'sentinel-value-1234';
 const NOW = 1_800_000_000_000; // ms; the fake clock starts here
 
 type Reply = { status?: number; json?: unknown; body?: string | Uint8Array<ArrayBuffer>; headers?: Record<string, string> };
-type Handler = Reply | ((request: Request) => Reply);
+type Handler = Reply | ((request: Request, sent: string | null) => Reply);
 
 interface Seen {
   url: URL;
@@ -33,7 +33,7 @@ function setup(routes: Record<string, Handler>) {
     if (route === undefined) {
       return new Response('not routed', { status: 599 });
     }
-    const reply = typeof route === 'function' ? route(request) : route;
+    const reply = typeof route === 'function' ? route(request, sent) : route;
     const body = reply.json !== undefined ? JSON.stringify(reply.json) : (reply.body ?? '');
     return new Response(reply.status === 204 ? null : body, {
       status: reply.status ?? 200,
@@ -42,8 +42,8 @@ function setup(routes: Record<string, Handler>) {
   }) as typeof fetch;
 
   const clock = new FakeClock(NOW);
-  const searchLimiter = new RateLimiter(30, clock);
-  const source = new GitHubSource({ token: sentinel, fetch: fakeFetch, searchLimiter, clock }); // pragma: allowlist secret
+  const searchConcurrency = new Concurrency(10);
+  const source = new GitHubSource({ token: sentinel, fetch: fakeFetch, searchConcurrency, clock }); // pragma: allowlist secret
   return { source, seen, clock };
 }
 
@@ -61,11 +61,24 @@ const REPO_JSON = {
   open_issues_count: 7,
 };
 
+const SEARCH_NODE = {
+  nameWithOwner: 'Foo/Bar',
+  url: 'https://github.com/Foo/Bar',
+  description: 'A thing',
+  stargazerCount: 120,
+  pushedAt: '2026-10-01T00:00:00Z',
+  createdAt: '2020-01-01T00:00:00Z',
+  isArchived: false,
+  licenseInfo: { spdxId: 'MIT' },
+  primaryLanguage: { name: 'TypeScript' },
+  repositoryTopics: { nodes: [{ topic: { name: 'rag' } }] },
+};
+
+const searchReply = (nodes: unknown[]): Reply => ({ json: { data: { search: { nodes } } } });
+
 describe('GitHubSource.search', () => {
-  it('maps items to candidates and sends the query, page size and headers', async () => {
-    const { source, seen } = setup({
-      '/search/repositories': { json: { items: [REPO_JSON] } },
-    });
+  it('maps the nodes of a GraphQL search to candidates, sending the query and page size as variables', async () => {
+    const { source, seen } = setup({ '/graphql': searchReply([SEARCH_NODE]) });
 
     const result = await source.search('model context protocol server', 5);
 
@@ -83,74 +96,100 @@ describe('GitHubSource.search', () => {
       },
     ]);
     const [request] = seen;
-    expect(request?.url.searchParams.get('q')).toBe('model context protocol server');
-    expect(request?.url.searchParams.get('per_page')).toBe('5');
+    expect(request?.method).toBe('POST');
     expect(request?.headers.get('authorization')).toBe(`Bearer ${sentinel}`);
-    expect(request?.headers.get('accept')).toBe('application/vnd.github+json');
-    expect(request?.headers.get('x-github-api-version')).toBe('2022-11-28');
+    const { query, variables } = JSON.parse(request?.body ?? '{}') as { query: string; variables: unknown };
+    expect(query).toContain('search(type: REPOSITORY');
+    expect(variables).toEqual({ q: 'model context protocol server', first: 5 });
   });
 
-  it('skips an item whose full_name does not parse instead of failing the query', async () => {
-    const { source } = setup({
-      '/search/repositories': {
-        json: { items: [{ ...REPO_JSON, full_name: 'not a repo' }, REPO_JSON] },
-      },
-    });
+  it('never touches the REST search API, whose quota is 30 a minute', async () => {
+    const { source, seen } = setup({ '/graphql': searchReply([]) });
+
+    await source.search('a', 5);
+
+    expect(seen.map((s) => s.url.pathname)).toEqual(['/graphql']);
+  });
+
+  it('maps null fields to null, [] and created_at', async () => {
+    const bare = { ...SEARCH_NODE, description: null, pushedAt: null, licenseInfo: null, primaryLanguage: null, repositoryTopics: { nodes: [] } };
+    const { source } = setup({ '/graphql': searchReply([bare]) });
+
+    expect(await source.search('q', 1)).toEqual([
+      expect.objectContaining({ description: null, pushedAt: '2020-01-01T00:00:00Z', license: null, language: null, topics: [] }),
+    ]);
+  });
+
+  it('skips a node whose name does not parse, or an empty node, instead of failing the query', async () => {
+    const { source } = setup({ '/graphql': searchReply([{ ...SEARCH_NODE, nameWithOwner: 'not a repo' }, {}, SEARCH_NODE]) });
 
     const result = await source.search('q', 10);
 
     expect(result.map((c) => c.name)).toEqual(['foo/bar']);
   });
 
-  it('paces searches through the limiter: the 31st waits for the window', async () => {
-    const { source, clock } = setup({ '/search/repositories': { json: { items: [] } } });
-
-    for (let i = 0; i < 31; i += 1) {
-      await source.search('q', 1);
+  it('runs every search through the concurrency limit', async () => {
+    let runs = 0;
+    class Counting extends Concurrency {
+      override run<T>(task: () => Promise<T>): Promise<T> {
+        runs += 1;
+        return super.run(task);
+      }
     }
+    const source = new GitHubSource({
+      token: sentinel, // pragma: allowlist secret
+      fetch: (async () => new Response(JSON.stringify({ data: { search: { nodes: [] } } }))) as typeof fetch,
+      searchConcurrency: new Counting(2),
+      clock: new FakeClock(NOW),
+    });
 
-    expect(clock.sleeps).toEqual([60_000]);
+    await Promise.all(['a', 'b', 'c'].map((q) => source.search(q, 1)));
+
+    expect(runs).toBe(3);
+  });
+
+  it('keeps the query out of the message when GraphQL answers with errors', async () => {
+    const { source } = setup({ '/graphql': { json: { errors: [{ message: 'Something went wrong' }] } } });
+
+    const error = await source.search('my private idea', 5).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SourceError);
+    expect((error as Error).message).toBe('GitHub GraphQL query failed for a repository search');
   });
 });
 
-describe('GitHubSource.search quota', () => {
-  const searchReply = (remaining: string, resetInS: number): Reply => ({
-    json: { items: [] },
-    headers: {
-      'x-ratelimit-remaining': remaining,
-      'x-ratelimit-reset': String(NOW / 1000 + resetInS),
-    },
+describe('GitHubSource.search after a refusal', () => {
+  const refusal = (resetInS: number): Reply => ({
+    json: { errors: [{ type: 'RATE_LIMITED' }] },
+    headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(NOW / 1000 + resetInS) },
   });
 
-  it('sleeps until the reset before the search that follows an exhausted quota', async () => {
+  it('sleeps until the reset before the next search when it is close', async () => {
     const { source, seen, clock } = setup({
-      '/search/repositories': () => (seen.length === 1 ? searchReply('0', 30) : { json: { items: [] } }),
+      '/graphql': () => (seen.length === 1 ? refusal(30) : searchReply([])),
     });
 
-    await source.search('a', 5);
-    expect(clock.sleeps).toEqual([]);
+    await expect(source.search('a', 5)).rejects.toBeInstanceOf(RateLimitedError);
     await source.search('b', 5);
 
     expect(clock.sleeps).toEqual([30_000]);
     expect(seen).toHaveLength(2);
   });
 
-  it('throws RateLimitedError without a request when the reset is 61 s away', async () => {
-    const { source, seen, clock } = setup({ '/search/repositories': searchReply('0', 61) });
+  it('fails the next search without a request when the reset is too far to wait for', async () => {
+    const { source, seen } = setup({ '/graphql': refusal(120) });
 
-    await source.search('a', 5);
+    await expect(source.search('a', 5)).rejects.toBeInstanceOf(RateLimitedError);
     const error = await source.search('b', 5).catch((e: unknown) => e);
 
-    expect(error).toBeInstanceOf(RateLimitedError);
     expect(error).toBeInstanceOf(SourceRateLimitedError);
-    expect((error as RateLimitedError).resetAt).toEqual(new Date((NOW / 1000 + 61) * 1000));
+    expect((error as RateLimitedError).resetAt).toEqual(new Date((NOW / 1000 + 120) * 1000));
     expect(seen).toHaveLength(1);
-    expect(clock.sleeps).toEqual([]);
   });
 
-  it('fails the next search without a request after a refusal whose reset is too far to wait for', async () => {
+  it('also learns the reset from a 403 refusal of the request itself', async () => {
     const { source, seen } = setup({
-      '/search/repositories': {
+      '/graphql': {
         status: 403,
         json: { message: 'API rate limit exceeded' },
         headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(NOW / 1000 + 120) },
@@ -163,25 +202,13 @@ describe('GitHubSource.search quota', () => {
     expect(seen).toHaveLength(1);
   });
 
-  it('does not sleep when requests remain', async () => {
-    const { source, clock } = setup({ '/search/repositories': searchReply('3', 30) });
+  it('does not wait when nothing was refused', async () => {
+    const { source, clock } = setup({ '/graphql': searchReply([]) });
 
     await source.search('a', 5);
     await source.search('b', 5);
 
     expect(clock.sleeps).toEqual([]);
-  });
-
-  it('waits only once per exhausted quota', async () => {
-    const { source, seen, clock } = setup({
-      '/search/repositories': () => (seen.length === 1 ? searchReply('0', 30) : { json: { items: [] } }),
-    });
-
-    await source.search('a', 5);
-    await source.search('b', 5);
-    await source.search('c', 5);
-
-    expect(clock.sleeps).toEqual([30_000]);
   });
 });
 
@@ -193,7 +220,7 @@ describe('a failing fetch', () => {
       fetch: (async () => {
         throw error;
       }) as typeof fetch,
-      searchLimiter: new RateLimiter(30, clock),
+      searchConcurrency: new Concurrency(10),
       clock,
     });
   }
@@ -220,7 +247,7 @@ describe('a failing fetch', () => {
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(GitHubError);
-    expect((error as Error).message).toContain('/search/repositories');
+    expect((error as Error).message).toContain('/graphql');
     expect((error as Error).message).not.toContain('my private idea');
   });
 });

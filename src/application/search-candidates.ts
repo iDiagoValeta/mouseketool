@@ -3,9 +3,11 @@ import type { Candidate, RankedCandidate } from '../domain/candidate.ts';
 import type { RunLog } from './ports/run-log.ts';
 import type { RepositorySource } from './ports/repository-source.ts';
 
-const MAX_QUERIES = 15;
+// More queries, not deeper ones: a project a query misses in its top 10 is rarely in its top 100, while another
+// wording of the same need often finds it (#59). 60 candidates are about 6k tokens for the caller.
+const MAX_QUERIES = 30;
 const RESULTS_PER_QUERY = 10;
-const RESULT_LIMIT = 40;
+const RESULT_LIMIT = 60;
 
 export class TooManyQueriesError extends Error {
   override name = 'TooManyQueriesError';
@@ -44,20 +46,19 @@ async function search(source: RepositorySource, queries: string[]): Promise<Sear
     throw new TooManyQueriesError(`At most ${MAX_QUERIES} queries per call, got ${queries.length}`);
   }
 
-  // Sequential, because GitHub also limits concurrent search requests, and one failing query
-  // must not hide the results of the others.
+  // All at once: the source keeps its own pace. Results are merged in query order whatever order they arrive
+  // in, and one failing query must not hide the results of the others.
+  const settled = await Promise.allSettled(queries.map((query) => source.search(query, RESULTS_PER_QUERY)));
   const found: Candidate[][] = [];
   const errors: SearchResult['errors'] = [];
-  for (const query of queries) {
-    try {
-      found.push((await source.search(query, RESULTS_PER_QUERY)).map(shortenDescription));
-    } catch (reason) {
-      errors.push({
-        query,
-        message: reason instanceof Error ? reason.message : String(reason),
-      });
+  settled.forEach((outcome, i) => {
+    if (outcome.status === 'fulfilled') {
+      found.push(outcome.value.map(shortenDescription));
+    } else {
+      const reason: unknown = outcome.reason;
+      errors.push({ query: queries[i]!, message: reason instanceof Error ? reason.message : String(reason) });
     }
-  }
+  });
 
   return { candidates: mergeResults(found, RESULT_LIMIT), errors };
 }

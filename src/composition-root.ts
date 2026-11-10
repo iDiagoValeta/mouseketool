@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { RunLog } from './application/ports/run-log.ts';
 import { GitHubSource } from './infrastructure/github/github-source.ts';
-import { RateLimiter, systemClock } from './infrastructure/github/rate-limiter.ts';
+import { Concurrency, systemClock } from './infrastructure/github/concurrency.ts';
 import { ghAuthToken, resolveToken } from './infrastructure/github/token.ts';
 import { createMcpServer } from './infrastructure/mcp/server.ts';
 import { JsonlRunLog } from './infrastructure/run-log/jsonl-run-log.ts';
@@ -14,15 +14,16 @@ const { version } = JSON.parse(readFileSync(new URL('../package.json', import.me
   version: string;
 };
 
-// GitHub allows 30 search requests per minute for an authenticated caller.
-const SEARCHES_PER_MINUTE = 30;
+// Searches go through GraphQL, which has no per-minute search quota; 15 at once ran with no error or
+// retry-after in a burst of 60 (#59), so 10 at once leaves room for the rest of the caller's GitHub use.
+const SEARCHES_AT_ONCE = 10;
 
 export async function compose(env: NodeJS.ProcessEnv): Promise<McpServer> {
   const token = await resolveToken(env, ghAuthToken);
   const source = new GitHubSource({
     token,
     fetch,
-    searchLimiter: new RateLimiter(SEARCHES_PER_MINUTE, systemClock),
+    searchConcurrency: new Concurrency(SEARCHES_AT_ONCE),
     clock: systemClock,
   });
 
