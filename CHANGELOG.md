@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/iDiagoValeta/mouseketool/compare/v1.1.0...v1.2.0) (2026-11-10)
+
+
+### Features
+
+* search through GraphQL, up to 30 queries a call without waiting ([#60](https://github.com/iDiagoValeta/mouseketool/issues/60)) ([de5cb52](https://github.com/iDiagoValeta/mouseketool/commit/de5cb52a900e2067d541cbc2f208434097330914))
+
 ## [1.1.0](https://github.com/iDiagoValeta/mouseketool/compare/v1.0.3...v1.1.0) (2026-11-10)
 
 
