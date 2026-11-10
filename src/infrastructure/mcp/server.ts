@@ -23,7 +23,8 @@ const SEARCH_DESCRIPTION =
 const INSPECT_DESCRIPTION =
   'Inspects one GitHub repository. Returns JSON with its metadata (candidate), health signals ' +
   '(archived, monthsSinceLastPush, stale, licenseKind, maintenance), activity of the last 90 days ' +
-  '(commits, closed issues, open issues, contributors, latest release), the README (truncated) and the ' +
+  '(commits, closed issues, open issues without pull requests, contributors or null when GitHub will not ' +
+  'count them, latest release), the README (truncated) and the ' +
   'top-level file list. The server does no judging: it reports facts, you decide. ' +
   '`repo` is "owner/name" or a GitHub URL.';
 

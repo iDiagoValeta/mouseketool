@@ -4,7 +4,8 @@ export interface ActivityFacts {
   commitsLast90Days: number;
   issuesClosedLast90Days: number;
   openIssues: number;
-  contributors: number;
+  // Null when GitHub refuses to count them, which it does only for very large repositories.
+  contributors: number | null;
   latestRelease: { tag: string; publishedAt: string } | null;
 }
 

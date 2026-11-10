@@ -16,7 +16,9 @@ type Handler = Reply | ((request: Request) => Reply);
 
 interface Seen {
   url: URL;
+  method: string;
   headers: Headers;
+  body: string | null;
 }
 
 /** A fetch that answers by `pathname` and records every request it receives. */
@@ -25,7 +27,8 @@ function setup(routes: Record<string, Handler>) {
   const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    seen.push({ url, headers: request.headers });
+    const sent = typeof init?.body === 'string' ? init.body : null;
+    seen.push({ url, method: request.method, headers: request.headers, body: sent });
     const route = routes[url.pathname];
     if (route === undefined) {
       return new Response('not routed', { status: 599 });
@@ -341,19 +344,25 @@ describe('GitHubSource.file', () => {
 describe('GitHubSource.activity', () => {
   const SINCE = new Date('2026-08-05T00:00:00Z');
 
+  function counts(commits: number | null, closed: number, open: number) {
+    return {
+      json: {
+        data: {
+          repository: {
+            issues: { totalCount: open },
+            defaultBranchRef:
+              commits === null ? null : { target: { history: { totalCount: commits } } },
+          },
+          search: { issueCount: closed },
+        },
+      },
+    };
+  }
+
   function activityRoutes(overrides: Record<string, Handler> = {}): Record<string, Handler> {
     return {
-      '/repos/foo/bar': { json: { ...REPO_JSON, open_issues_count: 7 } },
-      '/repos/foo/bar/commits': { json: [{}, {}, {}] },
-      '/repos/foo/bar/issues': {
-        json: [
-          { closed_at: '2026-09-01T00:00:00Z' },
-          { closed_at: '2026-08-05T00:00:00Z' },
-          { closed_at: '2026-07-01T00:00:00Z' },
-          { closed_at: '2026-09-02T00:00:00Z', pull_request: {} },
-        ],
-      },
-      '/repos/foo/bar/contributors': { json: [{}, {}] },
+      '/graphql': counts(3, 2, 7),
+      '/repos/foo/bar/contributors': { json: [{}] },
       '/repos/foo/bar/releases/latest': {
         json: { tag_name: 'v1.2.0', published_at: '2026-09-10T00:00:00Z' },
       },
@@ -361,26 +370,36 @@ describe('GitHubSource.activity', () => {
     };
   }
 
-  it('combines commits, closed issues, open issues, contributors and the latest release', async () => {
-    const { source, seen } = setup(activityRoutes());
+  it('combines the GraphQL counts, the contributors and the latest release', async () => {
+    const { source } = setup(activityRoutes());
 
     expect(await source.activity('foo/bar', SINCE)).toEqual({
       commitsLast90Days: 3,
       issuesClosedLast90Days: 2,
       openIssues: 7,
-      contributors: 2,
+      contributors: 1,
       latestRelease: { tag: 'v1.2.0', publishedAt: '2026-09-10T00:00:00Z' },
     });
-
-    const commits = seen.find((s) => s.url.pathname.endsWith('/commits'));
-    expect(commits?.url.searchParams.get('since')).toBe(SINCE.toISOString());
-    expect(commits?.url.searchParams.get('per_page')).toBe('100');
-    const issues = seen.find((s) => s.url.pathname.endsWith('/issues'));
-    expect(issues?.url.searchParams.get('state')).toBe('closed');
-    expect(issues?.url.searchParams.get('since')).toBe(SINCE.toISOString());
   });
 
-  it('never touches the search API', async () => {
+  it('asks GraphQL for the counts of this repository since the window start', async () => {
+    const { source, seen } = setup(activityRoutes());
+
+    await source.activity('foo/bar', SINCE);
+
+    const query = seen.find((s) => s.url.pathname === '/graphql');
+    expect(query?.method).toBe('POST');
+    expect(query?.headers.get('authorization')).toBe(`Bearer ${sentinel}`);
+    const { variables } = JSON.parse(query?.body ?? '{}') as { variables: unknown };
+    expect(variables).toEqual({
+      owner: 'foo',
+      name: 'bar',
+      since: SINCE.toISOString(),
+      closed: `repo:foo/bar is:issue is:closed closed:>=${SINCE.toISOString()}`,
+    });
+  });
+
+  it('never touches the REST search API', async () => {
     const { source, seen } = setup(activityRoutes());
 
     await source.activity('foo/bar', SINCE);
@@ -388,25 +407,36 @@ describe('GitHubSource.activity', () => {
     expect(seen.some((s) => s.url.pathname.startsWith('/search'))).toBe(false);
   });
 
-  it('caps commits and contributors at 100', async () => {
-    const hundred = Array.from({ length: 100 }, () => ({}));
+  it('counts contributors past one page from the last page of the Link header', async () => {
+    const link =
+      '<https://api.github.com/repositories/1/contributors?per_page=1&page=2>; rel="next", ' +
+      '<https://api.github.com/repositories/1/contributors?per_page=1&page=314>; rel="last"';
+    const { source, seen } = setup(
+      activityRoutes({ '/repos/foo/bar/contributors': { json: [{}], headers: { link } } }),
+    );
+
+    expect((await source.activity('foo/bar', SINCE)).contributors).toBe(314);
+    const contributors = seen.find((s) => s.url.pathname.endsWith('/contributors'));
+    expect(contributors?.url.searchParams.get('per_page')).toBe('1');
+  });
+
+  it('gives null contributors when GitHub refuses to count them (403)', async () => {
     const { source } = setup(
       activityRoutes({
-        '/repos/foo/bar/commits': { json: hundred },
-        '/repos/foo/bar/contributors': { json: hundred },
+        '/repos/foo/bar/contributors': {
+          status: 403,
+          json: { message: 'The history or contributor list is too large to list contributors' },
+        },
       }),
     );
 
-    const facts = await source.activity('foo/bar', SINCE);
-
-    expect(facts.commitsLast90Days).toBe(100);
-    expect(facts.contributors).toBe(100);
+    expect((await source.activity('foo/bar', SINCE)).contributors).toBeNull();
   });
 
-  it('gives 0 commits for an empty repository (409) and null for a missing release (404)', async () => {
+  it('gives 0 commits and contributors for an empty repository and null for a missing release', async () => {
     const { source } = setup(
       activityRoutes({
-        '/repos/foo/bar/commits': { status: 409, json: { message: 'Git Repository is empty.' } },
+        '/graphql': counts(null, 0, 0),
         '/repos/foo/bar/contributors': { status: 204 },
         '/repos/foo/bar/releases/latest': { status: 404 },
       }),
@@ -417,6 +447,35 @@ describe('GitHubSource.activity', () => {
     expect(facts.commitsLast90Days).toBe(0);
     expect(facts.contributors).toBe(0);
     expect(facts.latestRelease).toBeNull();
+  });
+
+  it('throws a SourceError when GraphQL answers with errors, such as for a missing repository', async () => {
+    const { source } = setup(
+      activityRoutes({
+        '/graphql': { json: { data: { repository: null }, errors: [{ type: 'NOT_FOUND' }] } },
+      }),
+    );
+
+    const error = await source.activity('foo/bar', SINCE).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SourceError);
+    expect((error as Error).message).toBe('GitHub GraphQL query failed for foo/bar');
+  });
+
+  it('throws RateLimitedError when GraphQL reports its limit as exhausted', async () => {
+    const { source } = setup(
+      activityRoutes({
+        '/graphql': {
+          json: { errors: [{ type: 'RATE_LIMITED' }] },
+          headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1800000600' },
+        },
+      }),
+    );
+
+    const error = await source.activity('foo/bar', SINCE).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(RateLimitedError);
+    expect((error as RateLimitedError).resetAt).toEqual(new Date(1_800_000_600_000));
   });
 });
 
