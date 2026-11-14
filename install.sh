@@ -184,8 +184,8 @@ opencode_uninstall() {
 # --- main --------------------------------------------------------------------------------------------------
 
 token_hint() {
-  if [ -z "${MOUSEKETOOL_GITHUB_TOKEN:-}" ]; then
-    say "The server reads public repositories only; give it a read-only token of its own in MOUSEKETOOL_GITHUB_TOKEN:"
+  if [ -z "${MOUSEKETOOL_GITHUB_TOKEN:-}" ] && [ ! -s "${XDG_CONFIG_HOME:-$HOME/.config}/mouseketool/token" ]; then
+    say "The server reads public repositories only; save a read-only token of its own in ~/.config/mouseketool/token:"
     say "  https://github.com/iDiagoValeta/mouseketool#github-token"
   fi
 }

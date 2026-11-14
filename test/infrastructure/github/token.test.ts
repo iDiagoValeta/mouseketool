@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   InvalidTokenError,
   resolveToken,
+  TokenFileError,
   TokenMissingError,
+  tokenFilePath,
 } from '../../../src/infrastructure/github/token.ts';
 
+/** A config directory holding `mouseketool/token` with the given content. */
+function configWithToken(content: string): string {
+  const dir = mkdtempSync(join(tmpdir(), 'mouseketool-token-'));
+  mkdirSync(join(dir, 'mouseketool'));
+  writeFileSync(join(dir, 'mouseketool', 'token'), content, { mode: 0o600 });
+  return dir;
+}
+
 const MESSAGE =
-  'mouseketool needs a GitHub token: set MOUSEKETOOL_GITHUB_TOKEN or GITHUB_TOKEN, or run "gh auth login".';
+  'mouseketool needs a GitHub token: save one in ~/.config/mouseketool/token, set MOUSEKETOOL_GITHUB_TOKEN ' +
+  'or GITHUB_TOKEN, or run "gh auth login".';
 
 describe('resolveToken', () => {
   it('prefers MOUSEKETOOL_GITHUB_TOKEN over GITHUB_TOKEN and gh', async () => {
@@ -111,6 +125,58 @@ describe('resolveToken', () => {
         }),
       ).rejects.toBeInstanceOf(InvalidTokenError);
       expect(ghCalls).toBe(0);
+    });
+  });
+
+  describe('the token file', () => {
+    it('is read from XDG_CONFIG_HOME, else from HOME/.config, and not at all without either', () => {
+      expect(tokenFilePath({ XDG_CONFIG_HOME: '/x', HOME: '/h' })).toBe('/x/mouseketool/token');
+      expect(tokenFilePath({ HOME: '/h' })).toBe('/h/.config/mouseketool/token');
+      expect(tokenFilePath({})).toBeNull();
+    });
+
+    it('comes after MOUSEKETOOL_GITHUB_TOKEN and before GITHUB_TOKEN and gh, named by its path', async () => {
+      const dir = configWithToken('from-file\n');
+      const path = join(dir, 'mouseketool', 'token');
+
+      expect(
+        await resolveToken({ XDG_CONFIG_HOME: dir, MOUSEKETOOL_GITHUB_TOKEN: 'from-own' }, async () => null), // pragma: allowlist secret
+      ).toEqual({ value: 'from-own', source: 'MOUSEKETOOL_GITHUB_TOKEN' });
+      expect(
+        await resolveToken({ XDG_CONFIG_HOME: dir, GITHUB_TOKEN: 'from-env' }, async () => 'from-gh'), // pragma: allowlist secret
+      ).toEqual({ value: 'from-file', source: path });
+    });
+
+    it('counts a missing or blank file as missing', async () => {
+      const empty = mkdtempSync(join(tmpdir(), 'mouseketool-token-'));
+      expect(await resolveToken({ XDG_CONFIG_HOME: empty }, async () => 'from-gh')).toEqual({
+        value: 'from-gh',
+        source: 'gh auth token',
+      });
+      expect(await resolveToken({ XDG_CONFIG_HOME: configWithToken(' \n') }, async () => 'from-gh')).toEqual({
+        value: 'from-gh',
+        source: 'gh auth token',
+      });
+    });
+
+    it('stops at an invalid file, naming its path but not the value', async () => {
+      const dir = configWithToken('first-line\nsecond-line\n');
+      const error = await resolveToken({ XDG_CONFIG_HOME: dir, GITHUB_TOKEN: 'from-env' }, async () => null).catch( // pragma: allowlist secret
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(InvalidTokenError);
+      expect((error as Error).message).toContain(join(dir, 'mouseketool', 'token'));
+      expect((error as Error).message).not.toContain('first-line');
+    });
+
+    it.skipIf(process.getuid?.() === 0)('stops at a file it cannot read instead of falling back', async () => {
+      const dir = configWithToken('from-file');
+      chmodSync(join(dir, 'mouseketool', 'token'), 0o000);
+
+      await expect(
+        resolveToken({ XDG_CONFIG_HOME: dir, GITHUB_TOKEN: 'from-env' }, async () => null), // pragma: allowlist secret
+      ).rejects.toBeInstanceOf(TokenFileError);
     });
   });
 });
