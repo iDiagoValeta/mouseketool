@@ -32,7 +32,7 @@ You need Node 24 or later and a [GitHub token](#github-token).
 
 <!-- x-release-please-start-version -->
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.1/install.sh | sh
 ```
 <!-- x-release-please-end -->
 
@@ -44,7 +44,7 @@ Neither the script nor what it installs comes from `main`: a change reaches you 
 
 <!-- x-release-please-start-version -->
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.0/install.sh | sh -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.1/install.sh | sh -s -- --uninstall
 ```
 <!-- x-release-please-end -->
 
@@ -52,7 +52,7 @@ With Claude Code alone you can also skip the script:
 
 <!-- x-release-please-start-version -->
 ```bash
-claude plugin marketplace add iDiagoValeta/mouseketool@v1.2.0
+claude plugin marketplace add iDiagoValeta/mouseketool@v1.2.1
 claude plugin install mouseketool@mouseketool
 ```
 <!-- x-release-please-end -->
