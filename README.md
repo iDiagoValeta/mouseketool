@@ -122,11 +122,11 @@ git clone https://github.com/iDiagoValeta/mouseketool.git
 cd mouseketool
 pnpm install --frozen-lockfile
 pnpm check   # typecheck, lint (including the hexagonal layer rules) and tests
-pnpm build   # bundle the server and its dependencies into dist/server.mjs
+pnpm build   # bundle the server and its dependencies into plugin/dist/server.mjs
 claude --plugin-dir .   # try your local copy in Claude Code
 ```
 
-`dist/` is committed, because an installed plugin runs no build. CI fails when it does not match the source, so commit it after `pnpm build`.
+`plugin/dist/` is committed, because an installed plugin runs no build. CI fails when it does not match the source, so commit it after `pnpm build`.
 
 The code is hexagonal:
 - `src/domain` and `src/application` import no adapter or IO module;

@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "mouseketool",
-      "source": "./",
+      "source": "./plugin",
       "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
       "author": {
         "name": "Ignacio Diago Valeta",

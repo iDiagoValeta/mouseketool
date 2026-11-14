@@ -32,10 +32,10 @@ export function createWorkspace(
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 
   const runLog = join(dir, 'run.jsonl');
-  const server = join(repoRoot, 'dist', 'server.mjs');
+  const server = join(repoRoot, 'plugin', 'dist', 'server.mjs');
   // The variable that wins over every other source, so the token the harness chose is the one the server uses.
   const serverEnv = { MOUSEKETOOL_RUN_LOG: runLog, MOUSEKETOOL_GITHUB_TOKEN: githubToken }; // pragma: allowlist secret
-  const skill = join(repoRoot, 'skills', 'mouseketool');
+  const skill = join(repoRoot, 'plugin', 'skills', 'mouseketool');
 
   if (run.host === 'opencode-deepseek-flash') {
     if (options.skill) cpSync(skill, join(dir, '.opencode', 'skills', 'mouseketool'), { recursive: true });

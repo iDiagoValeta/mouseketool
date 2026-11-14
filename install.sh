@@ -132,7 +132,7 @@ opencode_config() {
     say "opencode: $OPENCODE_DIR/opencode.jsonc has comments, so it was left as it is."
     return 3
   fi
-  node -e "$OPENCODE_CONFIG_JS" "$1" "$OPENCODE_DIR/opencode.json" "$DATA_DIR/dist/server.mjs"
+  node -e "$OPENCODE_CONFIG_JS" "$1" "$OPENCODE_DIR/opencode.json" "$DATA_DIR/plugin/dist/server.mjs"
 }
 
 opencode_install() {
@@ -154,14 +154,14 @@ opencode_install() {
   fi
   rm -rf "$OPENCODE_SKILL"
   mkdir -p "$(dirname "$OPENCODE_SKILL")"
-  cp -R "$DATA_DIR/skills/mouseketool" "$OPENCODE_SKILL"
+  cp -R "$DATA_DIR/plugin/skills/mouseketool" "$OPENCODE_SKILL"
   : >"$OPENCODE_SKILL/$MARKER"
 
   if opencode_config add; then
     say "opencode: installed. Start a new session to load it."
   else
     say "opencode: skill installed. Add this to the \"mcp\" block of your config by hand:"
-    say "  \"mouseketool\": { \"type\": \"local\", \"command\": [\"node\", \"$DATA_DIR/dist/server.mjs\"] }"
+    say "  \"mouseketool\": { \"type\": \"local\", \"command\": [\"node\", \"$DATA_DIR/plugin/dist/server.mjs\"] }"
   fi
 }
 

@@ -10,6 +10,7 @@ Hexagonal (ports and adapters). Dependencies point inward:
 - `src/domain/**` and `src/application/**` import nothing from `src/infrastructure/**`, `@modelcontextprotocol/*`, `node:child_process`, `node:fs` or `node:fs/promises`.
 - ESLint `no-restricted-imports` enforces this in `pnpm lint`. `test/architecture/contract.test.ts` checks that the rule still fires on a known violation (`test/architecture/fixtures/`).
 - `src/infrastructure/mcp/**` (the driving adapter) imports no other adapter (`**/github/**`, `**/run-log/**`); the errors it tells apart, `SourceError` and `SourceRateLimitedError`, live next to `RepositorySource` in `src/application/ports/`.
+- The installed plugin is `plugin/` only (manifest, icon, skill, bundle, README, LICENSE); the marketplace points there, so the directory never sees the rest of the repository.
 - Adapters live in `src/infrastructure/**`. The composition root, `src/composition-root.ts`, is the only place that wires them to ports.
 
 ## Commands
@@ -19,7 +20,7 @@ Hexagonal (ports and adapters). Dependencies point inward:
 - `pnpm lint`: ESLint, including the layer rule.
 - `pnpm test`: Vitest.
 - `pnpm check`: typecheck, lint and test. Run it before pushing.
-- `pnpm build`: bundles `src/main.ts` and every dependency into `dist/server.mjs`, the `mouseketool` bin, plus `dist/THIRD_PARTY_LICENSES.md`. `dist/` is committed, because an installed plugin runs no build. CI rebuilds it and fails when the committed copy differs, so commit it after every change to `src/` or to the dependencies. A Dependabot PR that bumps a bundled dependency fails that check until `pnpm build` is run on its branch and `dist/` is pushed.
+- `pnpm build`: bundles `src/main.ts` and every dependency into `plugin/dist/server.mjs`, the `mouseketool` bin, plus `plugin/dist/THIRD_PARTY_LICENSES.md`. `plugin/dist/` is committed, because an installed plugin runs no build. CI rebuilds it and fails when the committed copy differs, so commit it after every change to `src/` or to the dependencies. A Dependabot PR that bumps a bundled dependency fails that check until `pnpm build` is run on its branch and `plugin/dist/` is pushed.
 - `pnpm eval`: runs the eval harness in `evals/harness/cli.ts`.
 
 ## Install
