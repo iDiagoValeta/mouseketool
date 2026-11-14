@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/iDiagoValeta/mouseketool/compare/v1.2.1...v1.2.2) (2026-11-14)
+
+
+### Bug Fixes
+
+* read the token from ~/.config/mouseketool/token ([#72](https://github.com/iDiagoValeta/mouseketool/issues/72)) ([fb6f66d](https://github.com/iDiagoValeta/mouseketool/commit/fb6f66d205e2ac3d49dab1016a857da09bf787bc)), closes [#71](https://github.com/iDiagoValeta/mouseketool/issues/71)
+
 ## [1.2.1](https://github.com/iDiagoValeta/mouseketool/compare/v1.2.0...v1.2.1) (2026-11-14)
 
 
