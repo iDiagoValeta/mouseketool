@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/iDiagoValeta/mouseketool/compare/v1.2.3...v1.2.4) (2026-11-14)
+
+
+### Miscellaneous Chores
+
+* release 1.2.4 ([#86](https://github.com/iDiagoValeta/mouseketool/issues/86)) ([#87](https://github.com/iDiagoValeta/mouseketool/issues/87)) ([7a16e84](https://github.com/iDiagoValeta/mouseketool/commit/7a16e841be757b23b9b85ff663520c38d4a3df7a))
+
 ## [1.2.3](https://github.com/iDiagoValeta/mouseketool/compare/v1.2.2...v1.2.3) (2026-11-14)
 
 
