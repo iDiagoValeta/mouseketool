@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/iDiagoValeta/mouseketool/compare/v1.2.0...v1.2.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* install the latest release instead of main ([#70](https://github.com/iDiagoValeta/mouseketool/issues/70)) ([12ff097](https://github.com/iDiagoValeta/mouseketool/commit/12ff0971406e22dc4c2d9652b57a1d74e888ef9c)), closes [#66](https://github.com/iDiagoValeta/mouseketool/issues/66)
+* prefer a dedicated read-only token and warn when the token can write ([#67](https://github.com/iDiagoValeta/mouseketool/issues/67)) ([3328140](https://github.com/iDiagoValeta/mouseketool/commit/33281403b4ea3ba71ea30f38512acee059263a3c)), closes [#65](https://github.com/iDiagoValeta/mouseketool/issues/65)
+
 ## [1.2.0](https://github.com/iDiagoValeta/mouseketool/compare/v1.1.0...v1.2.0) (2026-11-10)
 
 
