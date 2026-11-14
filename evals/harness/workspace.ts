@@ -33,7 +33,8 @@ export function createWorkspace(
 
   const runLog = join(dir, 'run.jsonl');
   const server = join(repoRoot, 'dist', 'server.mjs');
-  const serverEnv = { MOUSEKETOOL_RUN_LOG: runLog, GITHUB_TOKEN: githubToken }; // pragma: allowlist secret
+  // The variable that wins over every other source, so the token the harness chose is the one the server uses.
+  const serverEnv = { MOUSEKETOOL_RUN_LOG: runLog, MOUSEKETOOL_GITHUB_TOKEN: githubToken }; // pragma: allowlist secret
   const skill = join(repoRoot, 'skills', 'mouseketool');
 
   if (run.host === 'opencode-deepseek-flash') {

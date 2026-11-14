@@ -67,15 +67,18 @@ claude plugin marketplace remove mouseketool
 
 mouseketool only reads public repositories, so it needs a token that can do nothing more. The server takes the first one it finds:
 
-1. `MOUSEKETOOL_GITHUB_TOKEN`, a token for mouseketool alone. **Recommended**: a [fine-grained token](https://github.com/settings/personal-access-tokens/new) with repository access "Public repositories (read-only)" and no permissions added.
-2. `GITHUB_TOKEN`.
-3. The token of `gh auth login`. It usually carries scopes such as `repo` and `workflow`, which can write to every repository you can reach, private ones included.
+1. `MOUSEKETOOL_GITHUB_TOKEN`.
+2. The file `~/.config/mouseketool/token` (`$XDG_CONFIG_HOME/mouseketool/token` when that is set).
+3. `GITHUB_TOKEN`.
+4. The token of `gh auth login`. It usually carries scopes such as `repo` and `workflow`, which can write to every repository you can reach, private ones included.
 
-Export the variable in your shell profile, so that Claude Code or opencode passes it on to the server:
+**Recommended**: a [fine-grained token](https://github.com/settings/personal-access-tokens/new) with repository access "Public repositories" and no permissions added, saved in the file. The file works however your agent starts, while a variable exported in your shell profile only reaches agents started from a terminal, not from a desktop app. This asks for the token without showing it and saves it readable by you alone:
 
 ```bash
-export MOUSEKETOOL_GITHUB_TOKEN=github_pat_...
+read -rs "t?GitHub token: " && echo && mkdir -p -m 700 ~/.config/mouseketool && (umask 077 && printf '%s\n' "$t" > ~/.config/mouseketool/token) && unset t
 ```
+
+That line is for zsh; in bash, use `read -rsp "GitHub token: " t` instead.
 
 When the token in use can write, the server says so on stderr at start. That check reads the `X-OAuth-Scopes` header, which only classic and `gh` tokens send.
 
