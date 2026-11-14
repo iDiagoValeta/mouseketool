@@ -30,25 +30,32 @@ The skill triggers by itself when you want a new reusable tool to exist, and sta
 
 You need Node 24 or later and a [GitHub token](#github-token).
 
+<!-- x-release-please-start-version -->
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.0/install.sh | sh
 ```
+<!-- x-release-please-end -->
 
-This installs mouseketool for every supported agent on your machine:
-- **Claude Code**: installed as a plugin, through Claude Code's own marketplace commands.
-- **opencode**: the repository goes to `~/.local/share/mouseketool`, the skill to `~/.config/opencode/skills/`, and the server to your `opencode.json`.
+This installs the latest release of mouseketool for every supported agent on your machine:
+- **Claude Code**: installed as a plugin, through Claude Code's own marketplace commands, pinned to that release.
+- **opencode**: the release goes to `~/.local/share/mouseketool`, the skill to `~/.config/opencode/skills/`, and the server to your `opencode.json`.
 
-Run the same command again to update. To uninstall:
+Neither the script nor what it installs comes from `main`: a change reaches you only once it is released, and the repository's releases are immutable, so a published version cannot be replaced. Run the same command again to move to the latest release. To uninstall:
 
+<!-- x-release-please-start-version -->
 ```bash
-curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/v1.2.0/install.sh | sh -s -- --uninstall
 ```
+<!-- x-release-please-end -->
 
 With Claude Code alone you can also skip the script:
 
+<!-- x-release-please-start-version -->
 ```bash
-claude plugin install mouseketool --marketplace iDiagoValeta/mouseketool
+claude plugin marketplace add iDiagoValeta/mouseketool@v1.2.0
+claude plugin install mouseketool@mouseketool
 ```
+<!-- x-release-please-end -->
 
 and uninstall with:
 

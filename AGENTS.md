@@ -24,7 +24,7 @@ Hexagonal (ports and adapters). Dependencies point inward:
 
 ## Install
 
-`install.sh` installs and uninstalls (`--uninstall`) for Claude Code, through its plugin marketplace (`.claude-plugin/marketplace.json`), and for opencode. `MOUSEKETOOL_REF=<branch>` installs a branch instead of `main`.
+`install.sh` installs and uninstalls (`--uninstall`) for Claude Code, through its plugin marketplace (`.claude-plugin/marketplace.json`), and for opencode. By default it installs the latest release, found through the `/releases/latest` redirect, and pins the Claude Code marketplace to its tag; `MOUSEKETOOL_REF=<branch or tag>` installs that ref instead. Claude Code cannot repoint a marketplace, so moving to another ref removes and adds it again. The README's install commands name the current release; release-please bumps them (`x-release-please-start-version` blocks).
 
 ## Local files
 
