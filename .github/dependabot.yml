@@ -23,3 +23,8 @@ updates:
     commit-message:
       prefix: "chore"
     open-pull-requests-limit: 5
+    # A version younger than 72 hours fails `pnpm install` where pnpm's minimumReleaseAge is 4320 minutes, and a
+    # bump opened about 52 hours after its release (#68) shows days are not counted to the hour; 4 days clears
+    # 72 hours however they are counted. Security updates ignore cooldown and still arrive at once.
+    cooldown:
+      default-days: 4
