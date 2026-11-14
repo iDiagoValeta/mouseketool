@@ -7,7 +7,7 @@ import { ghAuthToken, resolveToken } from '../../../src/infrastructure/github/to
 describe.skipIf(process.env['MOUSEKETOOL_LIVE'] !== '1')('GitHubSource against api.github.com', () => {
   async function liveSource(): Promise<GitHubSource> {
     return new GitHubSource({
-      token: await resolveToken(process.env, ghAuthToken),
+      token: (await resolveToken(process.env, ghAuthToken)).value,
       fetch,
       searchConcurrency: new Concurrency(10),
       clock: systemClock,

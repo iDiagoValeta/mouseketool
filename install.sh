@@ -150,8 +150,9 @@ opencode_uninstall() {
 # --- main --------------------------------------------------------------------------------------------------
 
 token_hint() {
-  if [ -z "${GITHUB_TOKEN:-}" ] && ! { has gh && gh auth token >/dev/null 2>&1; }; then
-    say "The server needs a GitHub token when it runs: set GITHUB_TOKEN or run \"gh auth login\"."
+  if [ -z "${MOUSEKETOOL_GITHUB_TOKEN:-}" ]; then
+    say "The server reads public repositories only; give it a read-only token of its own in MOUSEKETOOL_GITHUB_TOKEN:"
+    say "  https://github.com/iDiagoValeta/mouseketool#github-token"
   fi
 }
 

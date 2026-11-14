@@ -4,6 +4,7 @@ import type { RunLog } from './application/ports/run-log.ts';
 import { GitHubSource } from './infrastructure/github/github-source.ts';
 import { Concurrency, systemClock } from './infrastructure/github/concurrency.ts';
 import { ghAuthToken, resolveToken } from './infrastructure/github/token.ts';
+import { warnIfTokenCanWrite } from './infrastructure/github/token-scopes.ts';
 import { createMcpServer } from './infrastructure/mcp/server.ts';
 import { JsonlRunLog } from './infrastructure/run-log/jsonl-run-log.ts';
 import { NoopRunLog } from './infrastructure/run-log/noop-run-log.ts';
@@ -20,8 +21,10 @@ const SEARCHES_AT_ONCE = 10;
 
 export async function compose(env: NodeJS.ProcessEnv): Promise<McpServer> {
   const token = await resolveToken(env, ghAuthToken);
+  // Not awaited: the check is advice and must not delay the server's start. stdout carries the protocol.
+  void warnIfTokenCanWrite({ token, fetch, warn: (line) => process.stderr.write(`${line}\n`) });
   const source = new GitHubSource({
-    token,
+    token: token.value,
     fetch,
     searchConcurrency: new Concurrency(SEARCHES_AT_ONCE),
     clock: systemClock,

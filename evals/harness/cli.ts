@@ -76,7 +76,7 @@ try {
 }
 
 // Resolved once here: hosts get no token in their environment, only the MCP server gets it, through its config.
-const githubToken = await resolveToken(process.env, ghAuthToken);
+const githubToken = (await resolveToken(process.env, ghAuthToken)).value;
 
 const cases = loadCases(join(repoRoot, 'evals', 'cases'));
 const reportDir = join(repoRoot, '.dev', 'eval-reports');
