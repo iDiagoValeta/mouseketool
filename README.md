@@ -28,7 +28,7 @@ The skill triggers by itself when you want a new reusable tool to exist, and sta
 
 ## Install
 
-You need Node 24 or later and a GitHub token: either `GITHUB_TOKEN`, or being logged in with `gh auth login`.
+You need Node 24 or later and a [GitHub token](#github-token).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh
@@ -55,6 +55,22 @@ and uninstall with:
 ```bash
 claude plugin marketplace remove mouseketool
 ```
+
+### GitHub token
+
+mouseketool only reads public repositories, so it needs a token that can do nothing more. The server takes the first one it finds:
+
+1. `MOUSEKETOOL_GITHUB_TOKEN`, a token for mouseketool alone. **Recommended**: a [fine-grained token](https://github.com/settings/personal-access-tokens/new) with repository access "Public repositories (read-only)" and no permissions added.
+2. `GITHUB_TOKEN`.
+3. The token of `gh auth login`. It usually carries scopes such as `repo` and `workflow`, which can write to every repository you can reach, private ones included.
+
+Export the variable in your shell profile, so that Claude Code or opencode passes it on to the server:
+
+```bash
+export MOUSEKETOOL_GITHUB_TOKEN=github_pat_...
+```
+
+When the token in use can write, the server says so on stderr at start. That check reads the `X-OAuth-Scopes` header, which only classic and `gh` tokens send.
 
 The token is sent only to `api.github.com`. It is never logged and never appears in a tool result. Searches go through GitHub's GraphQL API, 10 at a time, so a call of up to 30 queries does not wait on the REST search limit of 30 per minute.
 
