@@ -1,6 +1,6 @@
 {
   "name": "mouseketool",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
   "mcpServers": {
     "mouseketool": {
