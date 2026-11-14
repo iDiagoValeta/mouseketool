@@ -1,4 +1,4 @@
-// Bundles the server and every dependency into dist/server.mjs, which is committed: an installed plugin is a
+// Bundles the server and every dependency into plugin/dist/server.mjs, which is committed: an installed plugin is a
 // copy of the repository and runs no build, so the bundle must need nothing but Node. The licenses of the
 // bundled packages ship next to it, as their terms ask.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dist = join(root, 'dist');
+const dist = join(root, 'plugin', 'dist');
 
 const { metafile } = await build({
   entryPoints: [join(root, 'src/main.ts')],

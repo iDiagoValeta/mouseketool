@@ -66,7 +66,7 @@ for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]] as const) {
   });
 }
 
-// The runs use dist/server.mjs, so a stale build would test the wrong server.
+// The runs use plugin/dist/server.mjs, so a stale build would test the wrong server.
 try {
   execFileSync('pnpm', ['build'], { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
 } catch (error) {

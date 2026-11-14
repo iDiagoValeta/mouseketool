@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 
-const skill = readFileSync('skills/mouseketool/SKILL.md', 'utf8');
+const skill = readFileSync('plugin/skills/mouseketool/SKILL.md', 'utf8');
 // Parsed strictly, as GitHub and other Agent Skills hosts do: a lenient reader hid an unquoted ": " here.
 const frontmatter = parse(/^---\n([\s\S]*?)\n---\n/.exec(skill)?.[1] ?? '') as { name?: unknown; description?: unknown };
 const description = typeof frontmatter.description === 'string' ? frontmatter.description : '';

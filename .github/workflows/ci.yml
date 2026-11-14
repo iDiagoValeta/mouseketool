@@ -32,7 +32,7 @@ jobs:
       - run: pnpm build
       - name: Committed bundle matches the source
         run: |
-          if ! git diff --exit-code -- dist/; then
-            echo "::error::dist/ does not match the source. Run pnpm build and commit dist/."
+          if ! git diff --exit-code -- plugin/dist/; then
+            echo "::error::plugin/dist/ does not match the source. Run pnpm build and commit plugin/dist/."
             exit 1
           fi

@@ -9,11 +9,20 @@ import { createMcpServer } from './infrastructure/mcp/server.ts';
 import { JsonlRunLog } from './infrastructure/run-log/jsonl-run-log.ts';
 import { NoopRunLog } from './infrastructure/run-log/noop-run-log.ts';
 
-// Read at run time from the package.json one level up, from src/ and from dist/ alike, so a release that only
-// bumps the version leaves the committed bundle unchanged.
-const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
-  version: string;
-};
+// Read at run time, so a release that only bumps the version leaves the committed bundle unchanged. The bundle,
+// in plugin/dist/, reads the plugin manifest next to it; src/ reads package.json. release-please bumps both.
+function readVersion(): string {
+  for (const path of ['../.claude-plugin/plugin.json', '../package.json']) {
+    try {
+      return (JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8')) as { version: string }).version;
+    } catch {
+      // Not there from this location; try the next one.
+    }
+  }
+  throw new Error('mouseketool cannot find its version');
+}
+
+const version = readVersion();
 
 // Searches go through GraphQL, which has no per-minute search quota; 15 at once ran with no error or
 // retry-after in a burst of 60 (#59), so 10 at once leaves room for the rest of the caller's GitHub use.

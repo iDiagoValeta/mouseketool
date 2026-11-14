@@ -24,7 +24,7 @@ describe('createWorkspace', () => {
     expect(existsSync(join(ws.dir, 'work/.claude/skills/mouseketool/SKILL.md'))).toBe(true);
     expect(existsSync(join(ws.dir, 'work/mcp.json'))).toBe(false);
     const config = JSON.parse(readFileSync(join(ws.dir, 'mcp.json'), 'utf8'));
-    expect(config.mcpServers.mouseketool.args).toEqual([join(process.cwd(), 'dist/server.mjs')]);
+    expect(config.mcpServers.mouseketool.args).toEqual([join(process.cwd(), 'plugin/dist/server.mjs')]);
     expect(config.mcpServers.mouseketool.env).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, MOUSEKETOOL_GITHUB_TOKEN: TOKEN });
     expect(ws.runLog).toBe(join(ws.dir, 'run.jsonl'));
   });
@@ -42,7 +42,7 @@ describe('createWorkspace', () => {
     expect(existsSync(join(ws.dir, 'home'))).toBe(true);
     const config = JSON.parse(readFileSync(join(ws.dir, 'opencode.json'), 'utf8'));
     expect(config.mcp.mouseketool.type).toBe('local');
-    expect(config.mcp.mouseketool.command[1]).toBe(join(process.cwd(), 'dist/server.mjs'));
+    expect(config.mcp.mouseketool.command[1]).toBe(join(process.cwd(), 'plugin/dist/server.mjs'));
     expect(config.mcp.mouseketool.environment).toEqual({ MOUSEKETOOL_RUN_LOG: ws.runLog, MOUSEKETOOL_GITHUB_TOKEN: TOKEN });
   });
 
