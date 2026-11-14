@@ -3,11 +3,16 @@
   "owner": {
     "name": "Ignacio Diago Valeta"
   },
+  "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
   "plugins": [
     {
       "name": "mouseketool",
       "source": "./",
-      "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build."
+      "description": "Checks whether public GitHub projects already do what you are about to build, and gives a verdict: reuse, adapt, use as a base, or build.",
+      "author": {
+        "name": "Ignacio Diago Valeta",
+        "url": "https://github.com/iDiagoValeta"
+      }
     }
   ]
 }
