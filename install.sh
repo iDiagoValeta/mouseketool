@@ -1,20 +1,16 @@
 #!/bin/sh
-# Installs mouseketool for every supported agent found on this machine, Claude Code and opencode:
+# Installs mouseketool for every supported agent found on this machine, Claude Code and opencode, or removes it
+# with --uninstall. The README gives the command, which fetches this script from the latest release.
 #
-#   curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh
-#
-# and removes it again:
-#
-#   curl -fsSL https://raw.githubusercontent.com/iDiagoValeta/mouseketool/main/install.sh | sh -s -- --uninstall
-#
-# Claude Code gets the repository as a plugin, through its own marketplace commands. opencode gets a copy of the
-# repository in $XDG_DATA_HOME/mouseketool, a copy of the skill in its skills directory and the server added to
-# its opencode.json. Running it again updates both.
+# It installs the latest release, never main, so a change reaches users only once it is released. Claude Code
+# gets the repository as a plugin, through its own marketplace commands, pinned to that release. opencode gets
+# a copy of the release in $XDG_DATA_HOME/mouseketool, a copy of the skill in its skills directory and the
+# server added to its opencode.json. Running it again moves both to the latest release.
 set -eu
 
 REPO="iDiagoValeta/mouseketool"
-# A branch to install from instead of main, to try a change before it is merged.
-REF="${MOUSEKETOOL_REF:-main}"
+# A branch or tag to install instead of the latest release, to try a change before it is released.
+REF="${MOUSEKETOOL_REF:-}"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/mouseketool"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 OPENCODE_SKILL="$OPENCODE_DIR/skills/mouseketool"
@@ -34,25 +30,64 @@ need_node() {
   [ "$major" -ge 24 ] || fail "Node.js 24 or later is required; found $(node --version)."
 }
 
+# The tag of the latest release, read from where GitHub redirects /releases/latest; no API call, no rate limit.
+latest_release() {
+  url=$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest") || return 1
+  tag=${url##*/releases/tag/}
+  [ "$tag" != "$url" ] && [ -n "$tag" ] || return 1
+  echo "$tag"
+}
+
+resolve_ref() {
+  has curl || fail "curl is required to download mouseketool."
+  if [ -z "$REF" ]; then
+    REF=$(latest_release) || fail "could not find the latest release of $REPO."
+  fi
+  # The ref goes into URLs and a marketplace source; a branch or tag name needs nothing else.
+  case "$REF" in
+    *[!A-Za-z0-9._/-]*) fail "\"$REF\" is not a branch or tag name." ;;
+  esac
+  say "installing $REF."
+}
+
 # --- Claude Code -------------------------------------------------------------------------------------------
 
-claude_marketplace() {
-  if [ "$REF" = main ]; then echo "$REPO"; else echo "https://github.com/$REPO.git#$REF"; fi
-}
+# Prints the ref the mouseketool marketplace is pinned to (empty when it follows the default branch), or fails
+# when that marketplace is not added.
+CLAUDE_REF_JS='
+let list;
+try { list = JSON.parse(require("node:fs").readFileSync(0, "utf8")); } catch { process.exit(1); }
+const entry = Array.isArray(list) ? list.find((m) => m.name === "mouseketool") : undefined;
+if (entry === undefined) process.exit(1);
+console.log(entry.ref ?? "");
+'
 
 claude_install() {
   # HTTPS needs no GitHub SSH key, and the repository is public.
   export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1
-  if claude plugin list </dev/null 2>/dev/null | grep -q 'mouseketool@mouseketool'; then
-    claude plugin marketplace update mouseketool </dev/null
-    claude plugin update mouseketool@mouseketool </dev/null
-  else
-    claude plugin install mouseketool --marketplace "$(claude_marketplace)" </dev/null
+  if current=$(claude plugin marketplace list --json </dev/null 2>/dev/null | node -e "$CLAUDE_REF_JS"); then
+    if [ "$current" = "$REF" ] && claude plugin list </dev/null 2>/dev/null | grep -q 'mouseketool@mouseketool'; then
+      # Same ref: a tag stays where it is, a branch may have moved.
+      claude plugin marketplace update mouseketool </dev/null
+      claude plugin update mouseketool@mouseketool </dev/null
+      claude_warn_duplicate
+      say "Claude Code: up to date. Start a new session to load any change."
+      return 0
+    fi
+    # Claude Code cannot point a marketplace at another ref. Removing it also removes the plugin, which is
+    # installed again below from the new ref.
+    claude plugin marketplace remove mouseketool </dev/null
   fi
+  claude plugin marketplace add "$REPO@$REF" </dev/null
+  claude plugin install mouseketool@mouseketool </dev/null
+  claude_warn_duplicate
+  say "Claude Code: installed. Start a new session to load it."
+}
+
+claude_warn_duplicate() {
   if claude mcp get mouseketool </dev/null >/dev/null 2>&1; then
     say "Claude Code also has a server named mouseketool outside the plugin; remove it with: claude mcp remove mouseketool"
   fi
-  say "Claude Code: installed. Start a new session to load it."
 }
 
 claude_uninstall() {
@@ -101,13 +136,12 @@ opencode_config() {
 }
 
 opencode_install() {
-  has curl || fail "curl is required to download mouseketool for opencode."
   has tar || fail "tar is required to unpack mouseketool for opencode."
 
   # Unpacked next to its final place, so the swap is a rename on the same filesystem.
   mkdir -p "$(dirname "$DATA_DIR")"
   staging=$(mktemp -d "$(dirname "$DATA_DIR")/.mouseketool.XXXXXX")
-  if ! curl -fsSL "https://codeload.github.com/$REPO/tar.gz/refs/heads/$REF" | tar -xz -C "$staging" --strip-components=1; then
+  if ! curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" | tar -xz -C "$staging" --strip-components=1; then
     rm -rf "$staging"
     fail "could not download $REPO at $REF."
   fi
@@ -163,6 +197,8 @@ main() {
     --uninstall) action=uninstall ;;
     *) fail "unknown argument \"$1\"; the only option is --uninstall." ;;
   esac
+
+  [ "$action" = install ] && resolve_ref
 
   found=no
   if has claude; then
