@@ -7,7 +7,7 @@
 
 **Before you build something new, find out whether it already exists.**
 
-> **Context.** Built in November 2026 as a personal project, a few weeks after I started as an AI Engineer at Inditex. It belongs to my latest phase on GitHub: tools built with coding agents (Claude Code, opencode) to production standards, with CI, tests, releases, an architecture contract and evals.
+> **Context.** Built in November 2026 as a personal project, about two months after I started as an AI Engineer at Inditex. It belongs to my latest phase on GitHub: tools built with coding agents (Claude Code, opencode) to production standards, with CI, tests, releases, an architecture contract and evals.
 
 When you tell your coding agent you want to build a new tool, app or library, mouseketool searches GitHub for projects that already do it. It checks them for real: their health, their license, and the code behind each README's claims. Then it answers with a verdict against your requirements: **reuse**, **adapt**, **use as a base**, or **build from scratch**.
 
